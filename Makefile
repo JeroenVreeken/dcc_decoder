@@ -26,7 +26,7 @@ accessory_servo: accessory_servo.o dcc_decoder.o pwm.o stub.o
 accessory_servo.hex: accessory_servo
 
 clean:
-	rm -rf *o accessory_servo *d *hex *map
+	rm -rf *.o accessory_servo *.d *hex *map
 	make -f Makefile_ut clean
 
 program: accessory_servo.hex

@@ -40,6 +40,7 @@
 #define DCC_HBIT_0_MIN_US	90
 #define DCC_HBIT_0_MAX_US	10000
 
+
 // substract 1 for minimal edge case
 #define DCC_HBIT_1_MIN_TICKS	((DCC_HBIT_1_MIN_US / TICK_US) -1)
 #define DCC_HBIT_0_MIN_TICKS	((DCC_HBIT_0_MIN_US / TICK_US) -1)
@@ -114,10 +115,15 @@ static void dcc_toggle(uint16_t t_tick)
 {
 	static uint16_t prev_tick = 0;
 	uint16_t diff_tick = t_tick - prev_tick;
-	prev_tick = t_tick;
 	
 	bool is_1 = false;
 	bool is_0 = false;
+	
+	if (diff_tick <= 1) {
+		// ignore fast inversions as 'noise'
+		return;
+	}
+	prev_tick = t_tick;
 
 	if (diff_tick >= DCC_HBIT_1_MIN_TICKS && diff_tick <= DCC_HBIT_1_MAX_TICKS) {
 		is_1 = true;
