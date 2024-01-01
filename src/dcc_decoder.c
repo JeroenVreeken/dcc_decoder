@@ -97,7 +97,6 @@ enum dcc_decoder_state {
 	DCC_DECODER_STATE_BIT7_1,
 	DCC_DECODER_STATE_BIT7_0,
 	DCC_DECODER_STATE_START_WAIT,		// Expect next start bit (KEEP AFTER BIT7 !!!)
-	DCC_DECODER_STATE_END_H,
 };
 
 static uint8_t dcc_decoder_state = DCC_DECODER_STATE_PREAMBLE_WAIT;
@@ -109,6 +108,18 @@ static uint8_t dcc_decoder_state = DCC_DECODER_STATE_PREAMBLE_WAIT;
 static volatile uint8_t dcc_packet[DCC_PACKET_MAX];
 static volatile int8_t dcc_packet_len;
 static volatile bool dcc_packet_received = false;
+
+
+static void dcc_toggle(uint16_t t_tick);
+
+
+
+ISR(INT0_vect)
+{
+	dcc_toggle(tick());
+}
+
+
 
 // DCC input signal
 static void dcc_toggle(uint16_t t_tick)
@@ -166,6 +177,7 @@ static void dcc_toggle(uint16_t t_tick)
 				dcc_packet[0] = 0;
 				dcc_decoder_state = DCC_DECODER_STATE_START_H;
 			} else {
+				// junk or last packet not handled yet
 				dcc_decoder_state = DCC_DECODER_STATE_PREAMBLE_WAIT;
 			}
 			break;
@@ -180,7 +192,7 @@ static void dcc_toggle(uint16_t t_tick)
 				}
 			} else {
 				if (is_1) {
-					dcc_decoder_state = DCC_DECODER_STATE_END_H;
+					dcc_decoder_state = DCC_DECODER_STATE_PREAMBLE_0H;
 					dcc_packet_received = true;
 				} else {
 					dcc_decoder_state = DCC_DECODER_STATE_PREAMBLE_WAIT;
@@ -245,70 +257,72 @@ static void dcc_toggle(uint16_t t_tick)
 				dcc_decoder_state = DCC_DECODER_STATE_PREAMBLE_WAIT;
 			}
 			break;
-		case DCC_DECODER_STATE_END_H:
 		default:
 			dcc_decoder_state = DCC_DECODER_STATE_PREAMBLE_WAIT;
 	}
 }
 
 
+// Copy of the received packet
+static uint8_t dcc_packet_handle[DCC_PACKET_MAX];
 
 void dcc_decoder_handle(void)
 {
 	if (dcc_packet_received) {
-		// check byte
-
+		int8_t len = dcc_packet_len;
+		
+		// check bytes
 		uint8_t check = 0;
 		int8_t i;
-		for (i = 0; i < dcc_packet_len; i++) {
-			check ^= dcc_packet[i];
+		for (i = 0; i < len; i++) {
+			uint8_t packet_byte = dcc_packet[i];
+			
+			check ^= packet_byte;
+			
+			dcc_packet_handle[i] = packet_byte;
 		}
+		// Release receive buffer
+		dcc_packet_received = false;
 		
 		if (check == 0x00) { 
 			// valid packet
 			
-			uint8_t address = dcc_packet[0];
+			uint8_t address = dcc_packet_handle[0];
 			
 			if (address == DCC_ADDRESS_BROADCAST) {
 				
-				if (dcc_packet_len == 3 && dcc_packet[1] == DCC_RESET_DATA) {
+				if (len == 3 && dcc_packet_handle[1] == DCC_RESET_DATA) {
 					dcc_handle_reset();
 				}
 				
 			} else if ((address & DCC_ADDRESS_BASE_MASK) == DCC_ADDRESS_BASE_ACCESSORY) {
 				uint16_t add = address & ~DCC_ADDRESS_BASE_MASK;
 				// combine address bits
-				uint8_t add_h = (~dcc_packet[1]) & DCC_ACCESSORY_ADDH_MASK;
+				uint8_t add_h = (~dcc_packet_handle[1]) & DCC_ACCESSORY_ADDH_MASK;
 				add_h >>= DCC_ACCESSORY_ADDH_SHIFT;
 				add |= add_h * 64;
-				uint8_t pair = dcc_packet[1] & DCC_ACCESSORY_PAIR_MASK;
+				uint8_t pair = dcc_packet_handle[1] & DCC_ACCESSORY_PAIR_MASK;
 				pair >>= DCC_ACCESSORY_PAIR_SHIFT;
 
-				if ((dcc_packet[1] & DCC_ACCESSORY_SIGN) && (dcc_packet_len == 3)) {
-					uint8_t output = dcc_packet[1] & DCC_ACCESSORY_OUTPUT_MASK;
-					bool value = dcc_packet[1] & DCC_ACCESSORY_ACTIVATE;
+				if ((dcc_packet_handle[1] & DCC_ACCESSORY_SIGN) && (len == 3)) {
+					uint8_t output = dcc_packet_handle[1] & DCC_ACCESSORY_OUTPUT_MASK;
+					bool value = dcc_packet_handle[1] & DCC_ACCESSORY_ACTIVATE;
 
 					dcc_handle_accessory_basic(add, pair, output, value);
 
-				} else if ((dcc_packet[1] & DCC_ACCESSORY_EXTENDED_MASK) == DCC_ACCESSORY_EXTENDED_ASPECT && (dcc_packet_len == 4)) {
+				} else if ((dcc_packet_handle[1] & DCC_ACCESSORY_EXTENDED_MASK) == DCC_ACCESSORY_EXTENDED_ASPECT && (len == 4)) {
 					uint16_t output_address = add * 4 - 3 + pair;
 					
-					dcc_handle_accessory_extended(output_address, dcc_packet[2]);
+					dcc_handle_accessory_extended(output_address, dcc_packet_handle[2]);
 				}
 
 			}
 			
 		}
-		dcc_packet_received = false;
 	}
 }
 
 
-
-ISR(INT0_vect)
-{
-	dcc_toggle(tick());
-}
 
 
 

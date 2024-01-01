@@ -3,8 +3,8 @@ CFLAGS+= -Isrc -Iut_src
 
 CFLAGS+= -Iut_stub
 
+CFLAGS+= -g -O0 -Werror -Wall
 
-include build.mk
 
 
 all: ut_dcc_decoder
@@ -17,3 +17,8 @@ ut_dcc_decoder: ut_dcc_decoder.o
 
 clean:
 	rm -f ut_dcc_decoder
+
+
+
+include build.mk
+

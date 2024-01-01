@@ -5,8 +5,7 @@ TARGET=avr
 MCU=atmega328p
 CC=${TARGET}-gcc
 OBJCOPY=${TARGET}-objcopy
-CFLAGS+= -Wall -Werror -O1
-CFLAGS+= -MT $@ -MMD -MP -MF $*.d
+CFLAGS+= -Wall -Werror -Os
 CFLAGS+= -mmcu=$(MCU) -DF_CPU=16000000UL 
 
 
@@ -15,8 +14,6 @@ LDFLAGS+= -Xlinker -Map=accessory_servo.map
 LDFLAGS+= ${CFLAGS}
 
 
-
-include build.mk
 
 all: accessory_servo.hex
 
@@ -37,5 +34,6 @@ test:
 	make -f Makefile_ut
 	./ut_dcc_decoder
 
--include *.d
+
+include build.mk
 

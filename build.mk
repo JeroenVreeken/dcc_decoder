@@ -4,6 +4,8 @@
 ARFLAGS= -r
 
 
+CFLAGS+= -MT $@ -MMD -MP -MF $*.d
+
 %.o : %.c
 	@echo "COMPILE: $<"
 	@$(CC) $(CFLAGS) -c $< -o $@
@@ -19,3 +21,5 @@ ARFLAGS= -r
 (%): %
 	@echo "ARCHIVE: $< in $@"
 	@$(AR) $(ARFLAGS) $@ $<
+
+-include *.d
