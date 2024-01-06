@@ -4,22 +4,22 @@
 ARFLAGS= -r
 
 
-CFLAGS+= -MT $@ -MMD -MP -MF $*.d
+CFLAGS+= -MT $@ -MMD -MP -MF $(BUILD_DIR)$*.d
 
-%.o : %.c
+$(BUILD_DIR)%.o : %.c
 	@echo "COMPILE: $<"
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-%: %.o
+$(BUILD_DIR)%: $(BUILD_DIR)%.o
 	@echo "   LINK: $@"
-	$(LINK.o) $^ $(LOADLIBES) $(LDLIBS) -o $@
+	@$(LINK.o) $^ $(LOADLIBES) $(LDLIBS) -o $@
 
-%.hex: %
+$(BUILD_DIR)%.hex: $(BUILD_DIR)%
 	@echo "OBJCOPY: $@"
 	@$(OBJCOPY) -O ihex -R .eeprom -R .fuse -R .lock -R .signature $< $@
 
-(%): %
+$(BUILD_DIR)(%): $(BUILD_DIR)%
 	@echo "ARCHIVE: $< in $@"
 	@$(AR) $(ARFLAGS) $@ $<
 
--include *.d
+-include $(BUILD_DIR)*.d

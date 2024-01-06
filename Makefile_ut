@@ -1,22 +1,25 @@
 VPATH = src:ut_src
 CFLAGS+= -Isrc -Iut_src
-
 CFLAGS+= -Iut_stub
+
+BUILD_DIR=build_ut/
+
 
 CFLAGS+= -g -O0 -Werror -Wall
 
 
 
-all: ut_dcc_decoder
+all: build_ut/ut_dcc_decoder
+	build_ut/ut_dcc_decoder
 
-ut_dcc_decoder: ut_dcc_decoder.o
-ut_dcc_decoder.o: ut_dcc_decoder.c dcc_decoder.c
+ut_dcc_decoder: build_ut/ut_dcc_decoder.o
+ut_dcc_decoder.o: ut_dcc_decoder.c
 
-ut_dcc_decoder: ut_dcc_decoder.o
+build_ut/ut_dcc_decoder: build_ut/ut_dcc_decoder.o
 
 
 clean:
-	rm -f ut_dcc_decoder
+	rm -f build_ut/*
 
 
 
