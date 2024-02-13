@@ -25,12 +25,17 @@
 #include <avr/io.h>
 
 
+#if defined (__AVR_ATmega328P__) || defined (__AVR_ATmega328__) || defined(UNITTEST)
+/*************************************************************
+	Mega (arduino nano) specific
+*/
+
+
+typedef uint16_t tick_t;
+
+
 #define TICK_PRESCALER 64
 
-#define TICK_HZ (F_CPU / TICK_PRESCALER)
-#ifndef TICK_US
-#define TICK_US (1000000u / TICK_HZ)
-#endif
 
 #define T1_PRESCALER_1		(                        (1 << CS10))
 #define T1_PRESCALER_8		(            (1 << CS11)            )
@@ -55,9 +60,57 @@ static inline void tick_init(void)
 	TCCR1C = 0;
 }
 
-static inline uint16_t tick(void)
+
+
+
+#elif defined (__AVR_ATtiny25__) || defined (__AVR_ATtiny45__) || defined (__AVR_ATtiny85__)
+/*************************************************************
+	Tiny specific
+*/
+
+
+typedef uint8_t tick_t;
+
+
+#define TICK_PRESCALER 64
+
+#define T1_PRESCALER_1		(                                    (1 << CS10))
+#define T1_PRESCALER_64		(            (1 << CS12)|(1 << CS11)|(1 << CS10))
+#define T1_PRESCALER_128	((1 << CS13)                                    )
+
+static inline void tick_init(void)
+{
+	// Configure T1
+
+#if (TICK_PRESCALER==64)
+	TCCR1 = T1_PRESCALER_64;
+#else
+#error no prescaler
+#endif
+}
+
+
+#else
+#error New platform?
+#endif
+
+
+
+/*************************************************************
+	Common part 
+*/
+
+
+
+#define TICK_HZ (F_CPU / TICK_PRESCALER)
+#ifndef TICK_US
+#define TICK_US (1000000u / TICK_HZ)
+#endif
+
+static inline tick_t tick(void)
 {
 	return TCNT1;
 }
+
 
 #endif // _INCLUDE_TICK_H_

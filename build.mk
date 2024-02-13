@@ -10,6 +10,10 @@ $(BUILD_DIR)%.o : %.c
 	@echo "COMPILE: $<"
 	@$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD_DIR)%.o : %.S
+	@echo "ASSEMBLE: $<"
+	@$(CC) $(CFLAGS) -c $< -o $@
+
 $(BUILD_DIR)%: $(BUILD_DIR)%.o
 	@echo "   LINK: $@"
 	@$(LINK.o) $^ $(LOADLIBES) $(LDLIBS) -o $@
@@ -17,6 +21,10 @@ $(BUILD_DIR)%: $(BUILD_DIR)%.o
 $(BUILD_DIR)%.hex: $(BUILD_DIR)%
 	@echo "OBJCOPY: $@"
 	@$(OBJCOPY) -O ihex -R .eeprom -R .fuse -R .lock -R .signature $< $@
+
+$(BUILD_DIR)%.eep: $(BUILD_DIR)%
+	@echo "OBJCOPY: $@"
+	@$(OBJCOPY) -O ihex -j .eeprom --set-section-flags=.eeprom="alloc,load" --change-section-lma .eeprom=0 --no-change-warnings $< $@
 
 $(BUILD_DIR)(%): $(BUILD_DIR)%
 	@echo "ARCHIVE: $< in $@"

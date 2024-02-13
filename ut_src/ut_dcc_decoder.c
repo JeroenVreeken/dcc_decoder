@@ -701,6 +701,9 @@ struct test_handle {
 	int8_t len;
 	bool received;
 
+	uint8_t address_h;
+	uint8_t address_l;
+
 	bool reset_called;
 
 	bool accessory_basic_called;
@@ -712,6 +715,24 @@ struct test_handle {
 	bool accessory_extended_called;
 	uint16_t accessory_extended_add;
 	uint8_t accessory_extended_aspect;
+	
+	bool multifunction_speed_called;
+	bool multifunction_speedstep_called;
+	uint8_t speed;
+	bool forward;
+
+	bool multifunction_fg1_called;
+	bool fl;
+	bool f1;
+	bool f2;
+	bool f3;
+	bool f4;
+	
+	bool multifunction_cv_write_called;
+	bool multifunction_cv_writebit_called;
+	uint16_t cv;
+	uint8_t bit;
+	uint8_t value;
 };
 
 struct test_handle test_handles[] = {
@@ -756,21 +777,198 @@ struct test_handle test_handles[] = {
 	{ "basic acc cv",  { 0x81, 0xf0, 0xec, 0x00, 0x00, 0x9d }, 6, true,
 		.accessory_basic_called = false,
 	},
-	{ "extended acc 1",  { 0x81, 0x71, 0x00, 0xf0 }, 4, true,
+	{ "extended acc 1 aspect 0",  { 0x81, 0x71, 0x00, 0xf0 }, 4, true,
 		.accessory_extended_called = true,
 		.accessory_extended_add = 1,
 		.accessory_extended_aspect = 0,
 	},
-	{ "extended acc 1",  { 0xbf, 0x07, 0xff, 0x47 }, 4, true,
+	{ "extended acc 2044 aspect 255",  { 0xbf, 0x07, 0xff, 0x47 }, 4, true,
 		.accessory_extended_called = true,
 		.accessory_extended_add = 2044,
 		.accessory_extended_aspect = 255,
 	},
+	
+	{ "multifunction address 3 speed 28 forward", { 0x03, 0x7f, 0x7c }, 3, true,
+		.multifunction_speed_called = true,
+		.speed = 0x1f,
+		.forward = true,
+		.address_h = 0,
+		.address_l = 3,
+	},
+	{ "multifunction address 3 speed 28 reverse", { 0x03, 0x5f, 0x5c }, 3, true,
+		.multifunction_speed_called = true,
+		.speed = 0x1f,
+		.forward = false,
+		.address_h = 0,
+		.address_l = 3,
+	},
+	{ "multifunction address 3 speed 1 forward", { 0x03, 0x62, 0x61 }, 3, true,
+		.multifunction_speed_called = true,
+		.speed = 2,
+		.forward = true,
+		.address_h = 0,
+		.address_l = 3,
+	},
+	{ "multifunction address 3 speed stop reverse", { 0x03, 0x40, 0x43 }, 3, true,
+		.multifunction_speed_called = true,
+		.speed = 0,
+		.forward = false,
+		.address_h = 0,
+		.address_l = 3,
+	},
+	{ "multifunction address 1234 speed 28 forward", { 0xc4, 0xd2, 0x7f, 0x69 }, 4, true,
+		.multifunction_speed_called = true,
+		.speed = 0x1f,
+		.forward = true,
+		.address_h = 196,
+		.address_l = 210,
+	},
+	{ "multifunction address 1234 speed 28 reverse", { 0xc4, 0xd2, 0x5f, 0x49 }, 4, true,
+		.multifunction_speed_called = true,
+		.speed = 0x1f,
+		.forward = false,
+		.address_h = 196,
+		.address_l = 210,
+	},
+	{ "multifunction address 1234 speedstep 0 forward", { 0xc4, 0xd2, 0x3f, 0x80, 0xa9 }, 5, true,
+		.multifunction_speedstep_called = true,
+		.speed = 0,
+		.forward = true,
+		.address_h = 196,
+		.address_l = 210,
+	},
+	{ "multifunction address 1234 speedstep 126 reverse", { 0xc4, 0xd2, 0x3f, 0x00, 0x29 }, 5, true,
+		.multifunction_speedstep_called = true,
+		.speed = 127,
+		.forward = false,
+		.address_h = 196,
+		.address_l = 210,
+	},
+
+
+	{ "multifunction address 3 fg1 all off", { 0x03, 0x80, 0x83 }, 3, true,
+		.multifunction_fg1_called = true,
+		.address_h = 0,
+		.address_l = 3,
+		.fl = 0,
+		.f1 = 0,
+		.f2 = 0,
+		.f3 = 0,
+		.f4 = 0,
+	},
+	{ "multifunction address 3 fg1 FL", { 0x03, 0x90, 0x93 }, 3, true,
+		.multifunction_fg1_called = true,
+		.address_h = 0,
+		.address_l = 3,
+		.fl = 1,
+		.f1 = 0,
+		.f2 = 0,
+		.f3 = 0,
+		.f4 = 0,
+	},
+	{ "multifunction address 3 fg1 F1", { 0x03, 0x81, 0x82 }, 3, true,
+		.multifunction_fg1_called = true,
+		.address_h = 0,
+		.address_l = 3,
+		.fl = 0,
+		.f1 = 1,
+		.f2 = 0,
+		.f3 = 0,
+		.f4 = 0,
+	},
+	{ "multifunction address 3 fg1 F2", { 0x03, 0x82, 0x81 }, 3, true,
+		.multifunction_fg1_called = true,
+		.address_h = 0,
+		.address_l = 3,
+		.fl = 0,
+		.f1 = 0,
+		.f2 = 1,
+		.f3 = 0,
+		.f4 = 0,
+	},
+	{ "multifunction address 3 fg1 F3", { 0x03, 0x84, 0x87 }, 3, true,
+		.multifunction_fg1_called = true,
+		.address_h = 0,
+		.address_l = 3,
+		.fl = 0,
+		.f1 = 0,
+		.f2 = 0,
+		.f3 = 1,
+		.f4 = 0,
+	},
+	{ "multifunction address 3 fg1 F4", { 0x03, 0x88, 0x8b }, 3, true,
+		.multifunction_fg1_called = true,
+		.address_h = 0,
+		.address_l = 3,
+		.fl = 0,
+		.f1 = 0,
+		.f2 = 0,
+		.f3 = 0,
+		.f4 = 1,
+	},
+	
+	{ "cv write cv1 bit 0 1 @ 51", { 0x33, 0xe8, 0x00, 0xf8, 0x23 }, 5, true,
+		.multifunction_cv_writebit_called = true,
+		.address_h = 0,
+		.address_l = 51,
+		.cv = 1,
+		.bit = 0,
+		.value = 1,
+	},
+	{ "cv write cv1 bit 1 0 @ 51", { 0x33, 0xe8, 0x00, 0xf1, 0x2a }, 5, true,
+		.multifunction_cv_writebit_called = true,
+		.address_h = 0,
+		.address_l = 51,
+		.cv = 1,
+		.bit = 1,
+		.value = 0
+	},
+	{ "cv write cv1 bit 7 1 @ 51", { 0x33, 0xe8, 0x00, 0xff, 0x24 }, 5, true,
+		.multifunction_cv_writebit_called = true,
+		.address_h = 0,
+		.address_l = 51,
+		.cv = 1,
+		.bit = 7,
+		.value = 1,
+	},
+
+	{ "cv write cv1 0x5a @ 51", { 0x33, 0xec, 0x00, 0x5a, 0x85 }, 5, true,
+		.multifunction_cv_write_called = true,
+		.address_h = 0,
+		.address_l = 51,
+		.cv = 1,
+		.value = 0x5a,
+	},
+	{ "cv write cv769 0x5a @ 1", { 0x33, 0xef, 0x00, 0x5a, 0x86 }, 5, true,
+		.multifunction_cv_write_called = true,
+		.address_h = 0,
+		.address_l = 51,
+		.cv = 769,
+		.value = 0x5a,
+	},
+	{ "cv write cv1024 0xa5 @ 1", { 0x33, 0xef, 0xff, 0xa5, 0x86 }, 5, true,
+		.multifunction_cv_write_called = true,
+		.address_h = 0,
+		.address_l = 51,
+		.cv = 1024,
+		.value = 0xa5,
+	},
+	{ "cv write cv1024 0xa5 @ 1234", { 0xc4, 0xd2, 0xef, 0xff, 0xa5, 0xa3 }, 6, true,
+		.multifunction_cv_write_called = true,
+		.address_h = 196,
+		.address_l = 210,
+		.cv = 1024,
+		.value = 0xa5,
+	},
 };
 
 bool dcc_handle_reset_called;
-void dcc_handle_reset(void)
+uint8_t dcc_handle_address_h = -1;
+uint8_t dcc_handle_address_l = -1;
+void dcc_handle_reset(uint8_t address_h, uint8_t address_l)
 {
+	dcc_handle_address_h = address_h;
+	dcc_handle_address_l = address_l;
 	dcc_handle_reset_called = true;
 }
 
@@ -798,11 +996,78 @@ void dcc_handle_accessory_extended(uint16_t output_address, uint8_t aspect)
 	dcc_handle_accessory_extended_aspect = aspect;
 }
 
+bool dcc_handle_multifunction_speed_called;
+uint8_t dcc_handle_speed;
+bool dcc_handle_forward;
+void dcc_handle_multifunction_speed(uint8_t address_h, uint8_t address_l, uint8_t speed, bool forward)
+{
+	dcc_handle_multifunction_speed_called = true;
+	dcc_handle_address_h = address_h;
+	dcc_handle_address_l = address_l;
+	dcc_handle_speed = speed;
+	dcc_handle_forward = forward;
+}
+bool dcc_handle_multifunction_speedstep_called;
+void dcc_handle_multifunction_speedstep(uint8_t address_h, uint8_t address_l, uint8_t speed, bool forward)
+{
+	dcc_handle_multifunction_speedstep_called = true;
+	dcc_handle_address_h = address_h;
+	dcc_handle_address_l = address_l;
+	dcc_handle_speed = speed;
+	dcc_handle_forward = forward;
+}
+
+bool dcc_handle_multifunction_fg1_called;
+bool dcc_handle_fl;
+bool dcc_handle_f1;
+bool dcc_handle_f2;
+bool dcc_handle_f3;
+bool dcc_handle_f4;
+void dcc_handle_multifunction_fg1(uint8_t address_h, uint8_t address_l, bool fl, bool f1, bool f2, bool f3, bool f4)
+{
+	dcc_handle_multifunction_fg1_called = true;
+	dcc_handle_address_h = address_h;
+	dcc_handle_address_l = address_l;
+	dcc_handle_fl = fl;
+	dcc_handle_f1 = f1;
+	dcc_handle_f2 = f2;
+	dcc_handle_f3 = f3;
+	dcc_handle_f4 = f4;
+}
+
+
+bool dcc_handle_multifunction_cv_write_called;
+uint16_t dcc_handle_cv;
+uint8_t dcc_handle_value;
+void dcc_handle_multifunction_cv_write(uint8_t address_h, uint8_t address_l, uint16_t cv, uint8_t value)
+{
+	dcc_handle_multifunction_cv_write_called = true;
+	dcc_handle_address_h = address_h;
+	dcc_handle_address_l = address_l;
+	dcc_handle_cv = cv;
+	dcc_handle_value = value;
+}
+bool dcc_handle_multifunction_cv_writebit_called;
+uint8_t dcc_handle_bit;
+void dcc_handle_multifunction_cv_writebit(uint8_t address_h, uint8_t address_l, uint16_t cv, uint8_t bit, bool value)
+{
+	dcc_handle_multifunction_cv_writebit_called = true;
+	dcc_handle_address_h = address_h;
+	dcc_handle_address_l = address_l;
+	dcc_handle_bit = bit;
+	dcc_handle_cv = cv;
+	dcc_handle_value = value;
+}
+
+
+
 int main(int argc, char **argv)
 {
 	int i;
 	int r = 0;
 	uint16_t ticks = 0;
+	
+	printf("ut_dcc_decoder:\n");
 	
 	for (i = 0; i < sizeof(tests)/sizeof(tests[0]); i ++) {
 		int r_test = 0;
@@ -872,6 +1137,11 @@ int main(int argc, char **argv)
 		dcc_handle_reset_called = false;
 		dcc_handle_accessory_basic_called = false;
 		dcc_handle_accessory_extended_called = false;
+		dcc_handle_multifunction_speed_called = false;
+		dcc_handle_multifunction_speedstep_called = false;
+		dcc_handle_multifunction_fg1_called = false;
+		dcc_handle_multifunction_cv_writebit_called = false;
+		dcc_handle_multifunction_cv_write_called = false;
 		
 		/******************
 		    Perform test
@@ -891,6 +1161,10 @@ int main(int argc, char **argv)
 		if (test_handles[i].reset_called != dcc_handle_reset_called) {
 			r_test++;
 			printf("reset handler not/unexpected called\n");
+		}
+		if (test_handles[i].reset_called && (dcc_handle_address_l != 0 || dcc_handle_address_h != 0)) {
+			r_test++;
+			printf("reset handler called with bad address 0x%02x 0x%02x\n", dcc_handle_address_h, dcc_handle_address_l);
 		}
 
 		if (test_handles[i].accessory_basic_called != dcc_handle_accessory_basic_called) {
@@ -932,6 +1206,111 @@ int main(int argc, char **argv)
 			}
 		}
 		
+		if (test_handles[i].multifunction_speed_called != dcc_handle_multifunction_speed_called) {
+			r_test++;
+			printf("multifunction speed handler not/unexpected called: %d\n", dcc_handle_multifunction_speed_called);
+		}
+		if (test_handles[i].multifunction_speed_called) {
+			if (test_handles[i].speed != dcc_handle_speed) {
+				r_test++;
+			}
+			if (test_handles[i].forward != dcc_handle_forward) {
+				r_test++;
+			}
+			if (test_handles[i].address_l != dcc_handle_address_l) {
+				r_test++;
+			}
+			if (test_handles[i].address_h != dcc_handle_address_h) {
+				r_test++;
+			}
+			if (r_test) {
+				printf("speed not properly set: (%d, %d) @ 0x%02x 0x%02x\n", 
+				    dcc_handle_speed, dcc_handle_forward, dcc_handle_address_h, dcc_handle_address_l);
+			}
+		}
+
+		
+		if (test_handles[i].multifunction_fg1_called != dcc_handle_multifunction_fg1_called) {
+			r_test++;
+			printf("multifunction fg1 handler not/unexpected called: %d\n", dcc_handle_multifunction_fg1_called);
+		}
+		if (test_handles[i].multifunction_fg1_called) {
+			if (test_handles[i].fl != dcc_handle_fl) {
+				r_test++;
+			}
+			if (test_handles[i].f1 != dcc_handle_f1) {
+				r_test++;
+			}
+			if (test_handles[i].f2 != dcc_handle_f2) {
+				r_test++;
+			}
+			if (test_handles[i].f3 != dcc_handle_f3) {
+				r_test++;
+			}
+			if (test_handles[i].f4 != dcc_handle_f4) {
+				r_test++;
+			}
+			if (test_handles[i].address_l != dcc_handle_address_l) {
+				r_test++;
+			}
+			if (test_handles[i].address_h != dcc_handle_address_h) {
+				r_test++;
+			}
+			if (r_test) {
+				printf("fg1 not properly set: (%d, %d, %d, %d, %d) @ 0x%02x 0x%02x\n", 
+				    dcc_handle_fl, dcc_handle_f1, dcc_handle_f2, dcc_handle_f3, dcc_handle_f4, dcc_handle_address_h, dcc_handle_address_l);
+			}
+		}
+
+
+		if (test_handles[i].multifunction_cv_writebit_called != dcc_handle_multifunction_cv_writebit_called) {
+			r_test++;
+			printf("multifunction cv writebit handler not/unexpected called: %d\n", dcc_handle_multifunction_cv_writebit_called);
+		}
+		if (test_handles[i].multifunction_cv_writebit_called) {
+			if (test_handles[i].address_l != dcc_handle_address_l) {
+				r_test++;
+			}
+			if (test_handles[i].address_h != dcc_handle_address_h) {
+				r_test++;
+			}
+			if (test_handles[i].cv != dcc_handle_cv) {
+				r_test++;
+			}
+			if (test_handles[i].bit != dcc_handle_bit) {
+				r_test++;
+			}
+			if (test_handles[i].value != dcc_handle_value) {
+				r_test++;
+			}
+			if (r_test) {
+				printf("cvbit not properly written: (%d, %d, %d) @ 0x%02x 0x%02x\n",
+				    dcc_handle_cv, dcc_handle_bit, dcc_handle_value, dcc_handle_address_h, dcc_handle_address_l);
+			}
+		}
+		
+		if (test_handles[i].multifunction_cv_write_called != dcc_handle_multifunction_cv_write_called) {
+			r_test++;
+			printf("multifunction cv write handler not/unexpected called: %d\n", dcc_handle_multifunction_cv_write_called);
+		}
+		if (test_handles[i].multifunction_cv_write_called) {
+			if (test_handles[i].address_l != dcc_handle_address_l) {
+				r_test++;
+			}
+			if (test_handles[i].address_h != dcc_handle_address_h) {
+				r_test++;
+			}
+			if (test_handles[i].cv != dcc_handle_cv) {
+				r_test++;
+			}
+			if (test_handles[i].value != dcc_handle_value) {
+				r_test++;
+			}
+			if (r_test) {
+				printf("cv not properly written: (%d, 0x%02x) @ 0x%02x 0x%02x\n",
+				    dcc_handle_cv, dcc_handle_value, dcc_handle_address_h, dcc_handle_address_l);
+			}
+		}
 		
 		if (r_test == 0) {
 			printf("PASS\n");

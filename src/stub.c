@@ -25,8 +25,13 @@ void dcc_handle_stub(void) {}
 #pragma GCC diagnostic ignored "-Wpragmas" // in case gcc does not recognize -Wattribute-alias
 #pragma GCC diagnostic ignored "-Wattribute-alias"
 
-void dcc_handle_reset(void) __attribute__ ((weak, alias ("dcc_handle_stub")));
+void dcc_handle_reset(uint8_t h, uint8_t l) __attribute__ ((weak, alias ("dcc_handle_stub")));
 void dcc_handle_accessory_basic(uint16_t add, uint8_t pair, uint8_t output, bool value) __attribute__ ((weak, alias ("dcc_handle_stub")));
 void dcc_handle_accessory_extended(uint16_t output_address, uint8_t aspect) __attribute__ ((weak, alias ("dcc_handle_stub")));
+void dcc_handle_multifunction_speed(uint8_t address_h, uint8_t address_l, uint8_t speed, bool forward) __attribute__ ((weak, alias ("dcc_handle_stub")));
+void dcc_handle_multifunction_speedstep(uint8_t address_h, uint8_t address_l, uint8_t speed, bool forward) __attribute__ ((weak, alias ("dcc_handle_stub")));
+void dcc_handle_multifunction_fg1(uint8_t address_h, uint8_t address_l, bool fl, bool f1, bool f2, bool f3, bool f4) __attribute__ ((weak, alias ("dcc_handle_stub")));
+void dcc_handle_multifunction_cv_write(uint8_t address_h, uint8_t address_l, uint16_t cv, uint8_t value) __attribute__ ((weak, alias ("dcc_handle_stub")));
+void dcc_handle_multifunction_cv_writebit(uint8_t address_h, uint8_t address_l, uint16_t cv, uint8_t bit, bool value) __attribute__ ((weak, alias ("dcc_handle_stub")));
 
 #pragma GCC diagnostic pop

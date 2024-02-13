@@ -57,8 +57,13 @@ uint8_t pair_states[PAIR_NR];
 
 
 
-void dcc_handle_reset(void)
+void dcc_handle_reset(uint8_t address_h, uint8_t address_l)
 {
+	if (address_h != DCC_ADDRESS_H_BROADCAST)
+		return;
+	if (address_l != DCC_ADDRESS_BROADCAST)
+		return;
+	
 	int i;
 	for (i = 0; i < PAIR_NR; i++) {
 		pair_states[i] = PAIR_IDLE;

@@ -5,17 +5,17 @@ CFLAGS+= -Iut_stub
 BUILD_DIR=build_ut/
 
 
-CFLAGS+= -g -O0 -Werror -Wall
+CFLAGS+= -g -O0 -Werror -Wall -DUNITTEST
 
 
+BINS+= ut_dcc_decoder
+BINS+= ut_cv
 
-all: build_ut/ut_dcc_decoder
-	build_ut/ut_dcc_decoder
+BUILD_BINS=$(addprefix $(BUILD_DIR), $(BINS))
 
-ut_dcc_decoder: build_ut/ut_dcc_decoder.o
-ut_dcc_decoder.o: ut_dcc_decoder.c
-
-build_ut/ut_dcc_decoder: build_ut/ut_dcc_decoder.o
+all: $(BUILD_BINS)
+	echo $(BUILD_BINS)
+	$(subst $(eval ) , && ,$(BUILD_BINS))
 
 
 clean:

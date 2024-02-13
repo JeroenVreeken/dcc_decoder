@@ -1,0 +1,41 @@
+VPATH= src
+CFLAGS+= -Isrc
+
+BUILD_DIR=build_tiny/
+
+TARGET=avr
+MCU=attiny85
+CC=${TARGET}-gcc
+OBJCOPY=${TARGET}-objcopy
+CFLAGS+= -Wall -Werror -Os
+CFLAGS+= -mmcu=$(MCU) -DF_CPU=16000000UL 
+
+CFLAGS+= -DCONFIG_OC1B_PWM
+
+
+# Set internal PLL to 16MHz
+AVRDUDE_FLAGS+= -U lfuse:w:0xf1:m -U hfuse:w:0xdd:m -U efuse:w:0xfe:m 
+
+LDFLAGS=  -mmcu=${MCU} 
+LDFLAGS+= -Xlinker -Map=build_tiny/function_decoder.map 
+LDFLAGS+= ${CFLAGS}
+
+
+
+all: build_tiny/function_decoder.hex build_tiny/function_decoder.eep
+
+build_tiny_OBJS= function_decoder.o function_decoder_cv.o dcc_decoder.o cv.o stub.o pwm.o
+build_tiny/function_decoder: $(addprefix $(BUILD_DIR), $(build_tiny_OBJS))
+
+build_tiny/function_decoder.hex: build_tiny/function_decoder
+
+clean:
+	rm -rf build_tiny/*
+
+program: build_tiny/function_decoder.hex build_tiny/function_decoder.eep
+	sudo avrdude -c usbasp -p t85 $(AVRDUDE_FLAGS) -U flash:w:build_tiny/function_decoder.hex -Ueeprom:w:build_tiny/function_decoder.eep
+
+
+
+include build.mk
+

@@ -110,7 +110,7 @@ static volatile int8_t dcc_packet_len;
 static volatile bool dcc_packet_received = false;
 
 
-static void dcc_toggle(uint16_t t_tick);
+static void dcc_toggle(tick_t t_tick);
 
 
 
@@ -122,10 +122,10 @@ ISR(INT0_vect)
 
 
 // DCC input signal
-static void dcc_toggle(uint16_t t_tick)
+static void dcc_toggle(tick_t t_tick)
 {
-	static uint16_t prev_tick = 0;
-	uint16_t diff_tick = t_tick - prev_tick;
+	static tick_t prev_tick = 0;
+	tick_t diff_tick = t_tick - prev_tick;
 	
 	bool is_1 = false;
 	bool is_0 = false;
@@ -266,6 +266,7 @@ static void dcc_toggle(uint16_t t_tick)
 // Copy of the received packet
 static uint8_t dcc_packet_handle[DCC_PACKET_MAX];
 
+
 void dcc_decoder_handle(void)
 {
 	if (dcc_packet_received) {
@@ -283,46 +284,136 @@ void dcc_decoder_handle(void)
 		}
 		// Release receive buffer
 		dcc_packet_received = false;
-		
+
 		if (check == 0x00) { 
 			// valid packet
 			
 			uint8_t address = dcc_packet_handle[0];
 			
-			if (address == DCC_ADDRESS_BROADCAST) {
-				
-				if (len == 3 && dcc_packet_handle[1] == DCC_RESET_DATA) {
-					dcc_handle_reset();
-				}
-				
-			} else if ((address & DCC_ADDRESS_BASE_MASK) == DCC_ADDRESS_BASE_ACCESSORY) {
-				uint16_t add = address & ~DCC_ADDRESS_BASE_MASK;
-				// combine address bits
-				uint8_t add_h = (~dcc_packet_handle[1]) & DCC_ACCESSORY_ADDH_MASK;
-				add_h >>= DCC_ACCESSORY_ADDH_SHIFT;
-				add |= add_h * 64;
-				uint8_t pair = dcc_packet_handle[1] & DCC_ACCESSORY_PAIR_MASK;
-				pair >>= DCC_ACCESSORY_PAIR_SHIFT;
-
-				if ((dcc_packet_handle[1] & DCC_ACCESSORY_SIGN) && (len == 3)) {
-					uint8_t output = dcc_packet_handle[1] & DCC_ACCESSORY_OUTPUT_MASK;
-					bool value = dcc_packet_handle[1] & DCC_ACCESSORY_ACTIVATE;
-
-					dcc_handle_accessory_basic(add, pair, output, value);
-
-				} else if ((dcc_packet_handle[1] & DCC_ACCESSORY_EXTENDED_MASK) == DCC_ACCESSORY_EXTENDED_ASPECT && (len == 4)) {
-					uint16_t output_address = add * 4 - 3 + pair;
-					
-					dcc_handle_accessory_extended(output_address, dcc_packet_handle[2]);
-				}
-
-			}
+			uint8_t address_type = address & DCC_ADDRESS_BASE_MASK;
+			uint8_t pos = 0;
+			uint8_t address_h = 0;
+			uint8_t address_l;
 			
+			switch (address_type) {
+				case DCC_ADDRESS_BASE_ACCESSORY: {
+					uint16_t add = address & ~DCC_ADDRESS_BASE_MASK;
+					// combine address bits
+					uint8_t add_h = (~dcc_packet_handle[1]) & DCC_ACCESSORY_ADDH_MASK;
+					add_h >>= DCC_ACCESSORY_ADDH_SHIFT;
+					add |= add_h * 64;
+					uint8_t pair = dcc_packet_handle[1] & DCC_ACCESSORY_PAIR_MASK;
+					pair >>= DCC_ACCESSORY_PAIR_SHIFT;
+
+					if ((dcc_packet_handle[1] & DCC_ACCESSORY_SIGN) && (len == 3)) {
+						uint8_t output = dcc_packet_handle[1] & DCC_ACCESSORY_OUTPUT_MASK;
+						bool value = dcc_packet_handle[1] & DCC_ACCESSORY_ACTIVATE;
+
+						dcc_handle_accessory_basic(add, pair, output, value);
+
+					} else if ((dcc_packet_handle[1] & DCC_ACCESSORY_EXTENDED_MASK) == DCC_ACCESSORY_EXTENDED_ASPECT && (len == 4)) {
+						uint16_t output_address = add * 4 - 3 + pair;
+					
+						dcc_handle_accessory_extended(output_address, dcc_packet_handle[2]);
+					}
+					break;
+				}
+				case DCC_ADDRESS_BASE_LONG:
+					address_h = address;
+					pos++;
+					// fallthrough
+				case DCC_ADDRESS_BASE_SHORT: {
+					address_l = dcc_packet_handle[pos];
+					uint8_t instruction = dcc_packet_handle[pos+1] & DCC_INSTRUCTION_MASK;
+					
+
+					switch (instruction) {
+						case DCC_INSTRUCTION_CTRL: {
+							uint8_t ctrl = dcc_packet_handle[pos] & DCC_CTRL_MASK;
+							
+							switch (ctrl) {
+								case DCC_CTRL_RESET:
+									dcc_handle_reset(address_h, address_l);
+							}
+							break;
+						}
+
+						case DCC_INSTRUCTION_SPEED_F: {
+							uint8_t speed = dcc_packet_handle[pos+1] & DCC_SPEED_MASK;
+							dcc_handle_multifunction_speed(address_h, address_l, speed, true);
+							break;
+						}
+						case DCC_INSTRUCTION_SPEED_R: {
+							uint8_t speed = dcc_packet_handle[pos+1] & DCC_SPEED_MASK;
+							dcc_handle_multifunction_speed(address_h, address_l, speed, false);
+							break;
+						}
+
+						case DCC_INSTRUCTION_ADVANCED: {
+							uint8_t sub = dcc_packet_handle[pos+1] & DCC_ADVANCED_SUB_MASK;
+							
+							switch (sub) {
+								case DCC_ADVANCED_SPEEDSTEP: {
+									uint8_t speed = dcc_packet_handle[pos+2] & DCC_SPEEDSTEP_SPEED_MASK;
+									uint8_t direction = dcc_packet_handle[pos+2] & DCC_SPEEDSTEP_DIRECTION_MASK;
+									dcc_handle_multifunction_speedstep(address_h, address_l, speed, direction);
+									break;
+								}
+							}
+							break;
+						}
+						
+						case DCC_INSTRUCTION_FG1: {
+							bool fl = dcc_packet_handle[pos+1] & DCC_FG1_FL;
+							bool f1 = dcc_packet_handle[pos+1] & DCC_FG1_F1;
+							bool f2 = dcc_packet_handle[pos+1] & DCC_FG1_F2;
+							bool f3 = dcc_packet_handle[pos+1] & DCC_FG1_F3;
+							bool f4 = dcc_packet_handle[pos+1] & DCC_FG1_F4;
+							dcc_handle_multifunction_fg1(address_h, address_l, fl, f1, f2, f3, f4);
+							break;
+						}
+						
+						case DCC_INSTRUCTION_CV: {
+							// Only support long form
+							if ((dcc_packet_handle[pos+1] & DCC_CV_SHORT_FORM) == 0) {
+								uint16_t cv = 1 + dcc_packet_handle[pos+2] + ((dcc_packet_handle[pos+1] & DCC_CV_VARIABLE_HIGH_MASK) << 8);
+								uint8_t type = dcc_packet_handle[pos+1] & DCC_CV_INSTRUCTION_TYPE_MASK;
+								uint8_t data = dcc_packet_handle[pos+3];
+								
+								switch (type) {
+									case DCC_CV_VERIFY_BYTE:
+										break;
+									case DCC_CV_WRITE_BYTE:
+										dcc_handle_multifunction_cv_write(address_h, address_l, cv, data);
+										break;
+									case DCC_CV_BIT_MANIPULATE: {
+										uint8_t bit = data & DCC_CV_BIT_MANIPULATE_BIT_MASK;
+										bool value = data & DCC_CV_BIT_MANIPULATE_VAL_MASK;
+										uint8_t bittype = data & DCC_CV_BIT_MANIPULATE_MASK;
+										switch (bittype) {
+											case DCC_CV_BIT_MANIPULATE_VERIFY:
+												break;
+											case DCC_CV_BIT_MANIPULATE_WRITE:
+												dcc_handle_multifunction_cv_writebit(address_h, address_l, cv, bit, value);
+												break;
+										}
+										break;
+									}
+								}
+							}
+							break;
+						}
+					}
+				}
+			}
 		}
 	}
 }
 
 
+
+
+#if defined (__AVR_ATmega328P__) || defined (__AVR_ATmega328__) || defined(UNITTEST)
 
 
 
@@ -342,3 +433,27 @@ void dcc_decoder_init(void)
 	// note: still needs sei()!!!
 }
 
+
+#elif defined (__AVR_ATtiny25__) || defined (__AVR_ATtiny45__) || defined (__AVR_ATtiny85__)
+
+
+void dcc_decoder_init(void)
+{
+	// PB2 as input
+	DDRB &= ~(1 << PB2);
+	// pull up
+	//PORTB |= (1 << PB2); 
+	// no pull up
+	PORTB &= ~(1 << PB2);
+	
+	// INT0 on any edge
+	MCUCR |= (1<<ISC00);
+	
+	// enable INT0
+	GIMSK |= (1<<INT0);
+
+	// note: still needs sei()!!!
+}
+
+
+#endif

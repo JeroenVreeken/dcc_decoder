@@ -12,14 +12,14 @@ CFLAGS+= -mmcu=$(MCU) -DF_CPU=16000000UL
 
 
 LDFLAGS=  -mmcu=${MCU} 
-LDFLAGS+= -Xlinker -Map=accessory_servo.map 
+LDFLAGS+= -Xlinker -Map=build_nano/accessory_servo.map 
 LDFLAGS+= ${CFLAGS}
 
 
 
 all: build_nano/accessory_servo.hex
 
-build_nano_OBJS= accessory_servo.o dcc_decoder.o pwm.o stub.o
+build_nano_OBJS= accessory_servo.o dcc_decoder.o pwm_servo.o stub.o
 build_nano/accessory_servo: $(addprefix $(BUILD_DIR), $(build_nano_OBJS))
 
 build_nano/accessory_servo.hex: build_nano/accessory_servo
