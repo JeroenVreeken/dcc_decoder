@@ -16,18 +16,31 @@ LDFLAGS+= ${CFLAGS}
 
 
 
-all: build_nano/accessory_servo.hex
+all: build_nano/accessory_servo.hex build_nano/accessory_signal.hex
 
-build_nano_OBJS= accessory_servo.o dcc_decoder.o pwm_servo.o stub.o
-build_nano/accessory_servo: $(addprefix $(BUILD_DIR), $(build_nano_OBJS))
+
+accessory_servo_OBJS= accessory_servo.o dcc_decoder.o pwm_servo.o stub.o
+build_nano/accessory_servo: $(addprefix $(BUILD_DIR), $(accessory_servo_OBJS))
 
 build_nano/accessory_servo.hex: build_nano/accessory_servo
+
+
+accessory_signal_OBJS= accessory_signal.o dcc_decoder.o stub.o
+build_nano/accessory_signal: $(addprefix $(BUILD_DIR), $(accessory_signal_OBJS))
+
+build_nano/accessory_signal.hex: build_nano/accessory_signal
+
 
 clean:
 	rm -rf build_nano/*
 
-program: build_nano/accessory_servo.hex
+
+program_servo: build_nano/accessory_servo.hex
 	sudo avrdude -c usbasp -p m328p -U flash:w:build_nano/accessory_servo.hex
+
+
+program_signal: build_nano/accessory_signal.hex
+	sudo avrdude -c usbasp -p m328p -U flash:w:build_nano/accessory_signal.hex
 
 
 
