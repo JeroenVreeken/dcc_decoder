@@ -17,7 +17,6 @@ CFLAGS+= -DCONFIG_OC1B_PWM
 AVRDUDE_FLAGS+= -U lfuse:w:0xf1:m -U hfuse:w:0xdd:m -U efuse:w:0xfe:m 
 
 LDFLAGS=  -mmcu=${MCU} 
-LDFLAGS+= -Xlinker -Map=build_tiny/function_decoder.map 
 LDFLAGS+= ${CFLAGS}
 
 

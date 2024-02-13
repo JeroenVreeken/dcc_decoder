@@ -12,7 +12,6 @@ CFLAGS+= -mmcu=$(MCU) -DF_CPU=16000000UL
 
 
 LDFLAGS=  -mmcu=${MCU} 
-LDFLAGS+= -Xlinker -Map=build_nano/accessory_servo.map 
 LDFLAGS+= ${CFLAGS}
 
 
