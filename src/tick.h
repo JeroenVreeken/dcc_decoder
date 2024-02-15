@@ -25,6 +25,9 @@
 #include <avr/io.h>
 
 
+void tick_handle(void);
+
+
 #if defined (__AVR_ATmega328P__) || defined (__AVR_ATmega328__) || defined(UNITTEST)
 /*************************************************************
 	Mega (arduino nano) specific
@@ -102,15 +105,21 @@ static inline void tick_init(void)
 
 
 
-#define TICK_HZ (F_CPU / TICK_PRESCALER)
+#define TICK_HZ 	(F_CPU / TICK_PRESCALER)
+#define TICK_MILLIHZ 	((F_CPU * 1000)/ TICK_PRESCALER)
 #ifndef TICK_US
-#define TICK_US (1000000u / TICK_HZ)
+#define TICK_US 	(1000000u / TICK_HZ)
 #endif
 
 static inline tick_t tick(void)
 {
 	return TCNT1;
 }
+
+
+void tick_handle(void);
+uint16_t tick_ms(void);
+
 
 
 #endif // _INCLUDE_TICK_H_

@@ -12,10 +12,14 @@ BINS+= ut_dcc_decoder
 BINS+= ut_cv
 
 BUILD_BINS=$(addprefix $(BUILD_DIR), $(BINS))
+BUILD_OUTPUT=$(addsuffix .output, $(BUILD_BINS))
 
-all: $(BUILD_BINS)
-	echo $(BUILD_BINS)
-	$(subst $(eval ) , && ,$(BUILD_BINS))
+all: $(BUILD_OUTPUT)
+
+
+$(BUILD_DIR)%.output: $(BUILD_DIR)%
+	@echo "     UT: $<"
+	@$< > $@ || (cat $@ && rm $@ && false)
 
 
 clean:

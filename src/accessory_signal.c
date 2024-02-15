@@ -148,10 +148,30 @@ void dcc_handle_accessory_extended(uint16_t add, uint8_t aspect)
 	}
 }
 
+#define BLINK_ON_MS	400
+#define BLINK_MS	800
+static uint16_t blink_ms;
+static uint16_t prev_ms;
+
 
 
 static void led_status(void)
 {
+	uint16_t ms_now = tick_ms();
+	blink_ms += ms_now - prev_ms;
+	prev_ms = ms_now;
+	bool blink;
+	
+	if (blink_ms >= BLINK_MS) {
+		blink_ms -= BLINK_MS;
+	}
+	if (blink_ms >= BLINK_ON_MS) {
+		blink = false;
+	} else {
+		blink = true;
+	}
+
+
 	if (learning) {
 		// Turn LED on
 		LED_PORT |= (1 << LED_BIT);
@@ -163,6 +183,8 @@ static void led_status(void)
 	enum led_state leds;
 	
 	leds = aspect2state(state_aspect[0]);
+	if (blink)
+		leds ^= leds >> 4;
 	if (leds & 1) {
 		LED_R0_PORT |= (1 << LED_R0_BIT);
 	} else {
@@ -175,6 +197,8 @@ static void led_status(void)
 	}
 	
 	leds = aspect2state(state_aspect[1]);
+	if (blink)
+		leds ^= leds >> 4;
 	if (leds & 1) {
 		LED_R1_PORT |= (1 << LED_R1_BIT);
 	} else {
@@ -187,6 +211,8 @@ static void led_status(void)
 	}
 	
 	leds = aspect2state(state_aspect[2]);
+	if (blink)
+		leds ^= leds >> 4;
 	if (leds & 1) {
 		LED_R2_PORT |= (1 << LED_R2_BIT);
 	} else {
@@ -199,6 +225,8 @@ static void led_status(void)
 	}
 	
 	leds = aspect2state(state_aspect[3]);
+	if (blink)
+		leds ^= leds >> 4;
 	if (leds & 1) {
 		LED_R3_PORT |= (1 << LED_R3_BIT);
 	} else {
@@ -211,6 +239,8 @@ static void led_status(void)
 	}
 	
 	leds = aspect2state(state_aspect[4]);
+	if (blink)
+		leds ^= leds >> 4;
 	if (leds & 1) {
 		LED_R4_PORT |= (1 << LED_R4_BIT);
 	} else {
