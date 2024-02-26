@@ -39,6 +39,8 @@ int tick_us = 1;
 
 #define ISR(name) void (name)(void)
 
+// We pick the nano for this UT
+#define __AVR_ATmega328P__
 
 /************************************/
 #include "dcc_decoder.c"
@@ -782,7 +784,17 @@ struct test_handle test_handles[] = {
 		.accessory_extended_add = 1,
 		.accessory_extended_aspect = 0,
 	},
-	{ "extended acc 2044 aspect 255",  { 0xbf, 0x07, 0xff, 0x47 }, 4, true,
+	{ "extended acc 11 aspect 1",  { 0x83, 0x75, 0x01, 0xf7 }, 4, true,
+		.accessory_extended_called = true,
+		.accessory_extended_add = 11,
+		.accessory_extended_aspect = 1,
+	},
+	{ "extended acc 15 aspect 16",  { 0x84, 0x75, 0x10, 0xe1 }, 4, true,
+		.accessory_extended_called = true,
+		.accessory_extended_add = 15,
+		.accessory_extended_aspect = 16,
+	},
+ 	{ "extended acc 2044 aspect 255",  { 0xbf, 0x07, 0xff, 0x47 }, 4, true,
 		.accessory_extended_called = true,
 		.accessory_extended_add = 2044,
 		.accessory_extended_aspect = 255,

@@ -23,12 +23,13 @@
 
 #include <avr/interrupt.h>
 #include <avr/io.h>
+#include <util/atomic.h>
 
 
 void tick_handle(void);
 
 
-#if defined (__AVR_ATmega328P__) || defined (__AVR_ATmega328__) || defined(UNITTEST)
+#if defined (__AVR_ATmega328P__) || defined (__AVR_ATmega328__)
 /*************************************************************
 	Mega (arduino nano) specific
 */
@@ -63,6 +64,18 @@ static inline void tick_init(void)
 	TCCR1C = 0;
 }
 
+static inline tick_t tick(void)
+{
+	tick_t r;
+	
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		r = TCNT1;
+	}
+	
+	return r;
+}
+
+
 
 
 
@@ -92,6 +105,13 @@ static inline void tick_init(void)
 #endif
 }
 
+static inline tick_t tick(void)
+{
+	return TCNT1;
+}
+
+
+
 
 #else
 #error New platform?
@@ -104,22 +124,25 @@ static inline void tick_init(void)
 */
 
 
+typedef uint16_t tick_ms_t;
+
 
 #define TICK_HZ 	(F_CPU / TICK_PRESCALER)
-#define TICK_MILLIHZ 	((F_CPU * 1000)/ TICK_PRESCALER)
+#define TICK_MILLIHZ 	((F_CPU / 1000)/ TICK_PRESCALER)
 #ifndef TICK_US
 #define TICK_US 	(1000000u / TICK_HZ)
 #endif
 
-static inline tick_t tick(void)
-{
-	return TCNT1;
-}
-
 
 void tick_handle(void);
-uint16_t tick_ms(void);
 
 
+extern tick_ms_t tick_milli;
+
+
+static inline tick_ms_t tick_ms(void)
+{
+	return tick_milli;
+}
 
 #endif // _INCLUDE_TICK_H_

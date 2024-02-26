@@ -4,12 +4,16 @@ CFLAGS+= -Iut_stub
 
 BUILD_DIR=build_ut/
 
+# fake size to suppress output
+SIZE=true
 
 CFLAGS+= -g -O0 -Werror -Wall -DUNITTEST
 
 
 BINS+= ut_dcc_decoder
 BINS+= ut_cv
+BINS+= ut_tick_nano
+BINS+= ut_tick_tiny
 
 BUILD_BINS=$(addprefix $(BUILD_DIR), $(BINS))
 BUILD_OUTPUT=$(addsuffix .output, $(BUILD_BINS))

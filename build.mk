@@ -17,6 +17,7 @@ $(BUILD_DIR)%.o : %.S
 $(BUILD_DIR)%: $(BUILD_DIR)%.o
 	@echo "   LINK: $@"
 	@$(LINK.o) $^ -Xlinker -Map=$(BUILD_DIR)$*.map -o $@
+	@$(SIZE) $@
 
 $(BUILD_DIR)%.hex: $(BUILD_DIR)%
 	@echo "OBJCOPY: $@"

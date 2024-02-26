@@ -75,7 +75,7 @@
 #define LED_G4_DDR	DDRD
 #define LED_G4_PORT	PORTD
 
-
+#define NR_SIGNALS	5
 
 enum led_state {
 	LED_OFF = 0x00,
@@ -139,9 +139,9 @@ void dcc_handle_accessory_extended(uint16_t add, uint8_t aspect)
 		learning = false;
 	}
 	if (add == DCC_ACCESSORY_BROADCAST_ADDRESS) {
-		memset(state_aspect, aspect, sizeof(aspect));
+		memset(state_aspect, aspect, NR_SIGNALS);
 	}
-	if (add >= decoder_address && add < decoder_address + sizeof(aspect)) {
+	if (add >= decoder_address && add < decoder_address + NR_SIGNALS) {
 		uint8_t nr = add - decoder_address;
 		
 		state_aspect[nr] = aspect;
@@ -150,21 +150,22 @@ void dcc_handle_accessory_extended(uint16_t add, uint8_t aspect)
 
 #define BLINK_ON_MS	400
 #define BLINK_MS	800
-static uint16_t blink_ms;
-static uint16_t prev_ms;
+static tick_ms_t prev_ms;
 
 
 
 static void led_status(void)
 {
-	uint16_t ms_now = tick_ms();
-	blink_ms += ms_now - prev_ms;
-	prev_ms = ms_now;
-	bool blink;
-	
+	tick_ms_t ms_now = tick_ms();
+	tick_ms_t blink_ms = ms_now - prev_ms;
+
 	if (blink_ms >= BLINK_MS) {
+		prev_ms += BLINK_MS;
 		blink_ms -= BLINK_MS;
 	}
+
+	bool blink;
+	
 	if (blink_ms >= BLINK_ON_MS) {
 		blink = false;
 	} else {
@@ -326,6 +327,7 @@ int main(void)
 	
 	while (1) {
 		wdt_reset();
+		tick_handle();
 		learning_status();
 		dcc_decoder_handle();
 		led_status();

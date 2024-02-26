@@ -22,22 +22,30 @@
 
 
 static tick_t tick_prev;
-static uint16_t tick_acc;
-static uint16_t tick_milli;
+tick_ms_t tick_milli;
 
 void tick_handle(void)
 {
-	tick_t now = tick();
-	tick_acc += now - tick_prev;
-	tick_prev = now;
-	
-	while (tick_acc >= TICK_MILLIHZ) {
+#if defined (__AVR_ATtiny25__) || defined (__AVR_ATtiny45__) || defined (__AVR_ATtiny85__)
+	if (TIFR & _BV(TOV1)) {
 		tick_milli++;
-		tick_acc -= TICK_MILLIHZ;
+		TIFR = _BV(TOV1);
+
+		tick_prev += 256 - TICK_MILLIHZ;
+		if (tick_prev >= TICK_MILLIHZ) {
+			tick_milli++;
+			tick_prev -= TICK_MILLIHZ;
+		}
 	}
+#else
+	tick_t now = tick();
+
+	tick_t diff = now - tick_prev;
+	
+	if (diff >= TICK_MILLIHZ) {
+		tick_milli++;
+		tick_prev += TICK_MILLIHZ;
+	}
+#endif
 }
 
-uint16_t tick_ms(void)
-{
-	return tick_milli;
-}
