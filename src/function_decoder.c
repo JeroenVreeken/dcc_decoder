@@ -55,6 +55,8 @@ void dcc_handle_multifunction_speed(uint8_t address_h, uint8_t address_l, uint8_
 {
 	if (!cv_address_match(address_h, address_l))
 		return;
+	if (cv_read_byte(CV_CONFIGURATION) & CV_CONFIGURATION_REVERSE)
+		forward = !forward;
 
 	state_forward = forward;
 }
@@ -63,6 +65,8 @@ void dcc_handle_multifunction_speedstep(uint8_t address_h, uint8_t address_l, ui
 {
 	if (!cv_address_match(address_h, address_l))
 		return;
+	if (cv_read_byte(CV_CONFIGURATION) & CV_CONFIGURATION_REVERSE)
+		forward = !forward;
 
 	state_forward = forward;
 }

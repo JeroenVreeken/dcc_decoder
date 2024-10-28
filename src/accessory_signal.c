@@ -94,21 +94,21 @@ static enum led_state aspect2state(uint8_t aspect)
 {
 	switch (aspect) {
 		default:
-		case 0:
+		case DCC_ASPECT_STOP:
 			return LED_RED;
-		case 1:
+		case DCC_ASPECT_EXPECT_STOP:
 			return LED_YELLOW;
-		case 2:
+		case DCC_ASPECT_BRAKE_INDICATED:
 			return LED_YELLOW_WHITE;
-		case 4:
+		case DCC_ASPECT_PASS_40KMH:
 			return LED_GREEN_BLINK;
-		case 6:
+		case DCC_ASPECT_PASS_INDICATED:
 			return LED_GREEN_BLINK_WHITE;
-		case 16:
+		case DCC_ASPECT_PASS:
 			return LED_GREEN;
-		case 33:
+		case DCC_ASPECT_PROCEED_ON_SIGHT:
 			return LED_YELLOW_BLINK;
-		case 34:
+		case DCC_ASPECT_INITIATE_BRAKING:
 			return LED_YELLOW_WHITE_BLINK;
 	}
 }
