@@ -735,6 +735,9 @@ struct test_handle {
 	uint16_t cv;
 	uint8_t bit;
 	uint8_t value;
+	
+	bool accessory_extended_cv_write_called;
+	bool accessory_extended_cv_writebit_called;
 };
 
 struct test_handle test_handles[] = {
@@ -972,6 +975,29 @@ struct test_handle test_handles[] = {
 		.cv = 1024,
 		.value = 0xa5,
 	},
+
+	{ "extended acc 15 cv write cv1 0x5a",  { 0x84, 0x75, 0xec, 0x00, 0xa5, 0xb8 }, 6, true,
+		.accessory_extended_cv_write_called = true,
+		.accessory_extended_add = 15,
+		.cv = 1,
+		.value = 0xa5,
+	},
+
+	{ "extended acc 2048 cv writebit cv1024 0x5a",  { 0x80, 0x77, 0xeb, 0xff, 0xf1, 0x12 }, 6, true,
+		.accessory_extended_cv_writebit_called = true,
+		.accessory_extended_add = 2048,
+		.cv = 1024,
+		.bit = 1,
+		.value = 0
+	},
+	{ "extended acc 2047 cv writebit cv1 1",  { 0x80, 0x75, 0xe8, 0x00, 0xf1, 0xec }, 6, true,
+		.accessory_extended_cv_writebit_called = true,
+		.accessory_extended_add = 2047,
+		.cv = 1,
+		.bit = 1,
+		.value = 0
+	},
+
 };
 
 bool dcc_handle_reset_called;
@@ -1072,6 +1098,25 @@ void dcc_handle_multifunction_cv_writebit(uint8_t address_h, uint8_t address_l, 
 }
 
 
+bool dcc_handle_accessory_extended_cv_write_called;
+void dcc_handle_accessory_extended_cv_write(uint16_t output_address, uint16_t cv, uint8_t value)
+{
+	dcc_handle_accessory_extended_cv_write_called = true;
+	dcc_handle_accessory_extended_output_address = output_address;
+	dcc_handle_cv = cv;
+	dcc_handle_value = value;
+}
+
+bool dcc_handle_accessory_extended_cv_writebit_called;
+void dcc_handle_accessory_extended_cv_writebit(uint16_t output_address, uint16_t cv, uint8_t bit, bool value)
+{
+	dcc_handle_accessory_extended_cv_writebit_called = true;
+	dcc_handle_accessory_extended_output_address = output_address;
+	dcc_handle_bit = bit;
+	dcc_handle_cv = cv;
+	dcc_handle_value = value;
+}
+
 
 int main(int argc, char **argv)
 {
@@ -1154,6 +1199,8 @@ int main(int argc, char **argv)
 		dcc_handle_multifunction_fg1_called = false;
 		dcc_handle_multifunction_cv_writebit_called = false;
 		dcc_handle_multifunction_cv_write_called = false;
+		dcc_handle_accessory_extended_cv_writebit_called = false;
+		dcc_handle_accessory_extended_cv_write_called = false;
 		
 		/******************
 		    Perform test
@@ -1323,10 +1370,61 @@ int main(int argc, char **argv)
 				    dcc_handle_cv, dcc_handle_value, dcc_handle_address_h, dcc_handle_address_l);
 			}
 		}
+
+
+		if (test_handles[i].accessory_extended_cv_writebit_called != dcc_handle_accessory_extended_cv_writebit_called) {
+			r_test++;
+			printf("accessory_extended cv writebit handler not/unexpected called: %d\n", dcc_handle_accessory_extended_cv_writebit_called);
+		}
+		if (test_handles[i].accessory_extended_cv_writebit_called) {
+			if (dcc_handle_accessory_extended_output_address != test_handles[i].accessory_extended_add)
+				r_test++;
+			if (test_handles[i].cv != dcc_handle_cv) {
+				r_test++;
+			}
+			if (test_handles[i].bit != dcc_handle_bit) {
+				r_test++;
+			}
+			if (test_handles[i].value != dcc_handle_value) {
+				r_test++;
+			}
+			if (r_test) {
+				printf("cvbit not properly written: (%d, %d, %d) @ 0x%04x\n",
+				    dcc_handle_cv, dcc_handle_bit, dcc_handle_value, dcc_handle_accessory_extended_output_address);
+			}
+		}
+		
+		if (test_handles[i].accessory_extended_cv_write_called != dcc_handle_accessory_extended_cv_write_called) {
+			r_test++;
+			printf("accessory_extended cv write handler not/unexpected called: %d\n", dcc_handle_accessory_extended_cv_write_called);
+		}
+		if (test_handles[i].accessory_extended_cv_write_called) {
+			if (dcc_handle_accessory_extended_output_address != test_handles[i].accessory_extended_add)
+				r_test++;
+			if (test_handles[i].cv != dcc_handle_cv) {
+				r_test++;
+			}
+			if (test_handles[i].value != dcc_handle_value) {
+				r_test++;
+			}
+			if (r_test) {
+				printf("cv not properly written: (%d, 0x%02x) @ 0x%04x\n",
+				    dcc_handle_cv, dcc_handle_value, dcc_handle_accessory_extended_output_address);
+			}
+		}
 		
 		if (r_test == 0) {
 			printf("PASS\n");
 		} else {
+			// Print in case checksum mismatches (e.g. new testcase, or deliberate bad sum)
+			uint8_t check = 0;
+			int8_t j;
+			for (j = 0; j < test_handles[i].len - 1; j++) {
+				check ^= test_handles[i].packet[j];
+			}
+			printf("Packet checksum: 0x%02x, calculated checksum: 0x%02x\n", test_handles[i].packet[test_handles[i].len-1], check);
+
+		
 			printf("FAIL\n");
 		}
 		r += r_test;

@@ -311,10 +311,42 @@ void dcc_decoder_handle(void)
 
 						dcc_handle_accessory_basic(add, pair, output, value);
 
-					} else if ((dcc_packet_handle[1] & DCC_ACCESSORY_EXTENDED_MASK) == DCC_ACCESSORY_EXTENDED_ASPECT && (len == 4)) {
+					} else if ((dcc_packet_handle[1] & DCC_ACCESSORY_EXTENDED_MASK) == DCC_ACCESSORY_EXTENDED_ASPECT) {
+						if (add == 0)
+							add = 512;
 						uint16_t output_address = add * 4 - 3 + pair;
-					
-						dcc_handle_accessory_extended(output_address, dcc_packet_handle[2]);
+						if (len == 4) {
+							dcc_handle_accessory_extended(output_address, dcc_packet_handle[2]);
+						} else if ((len == 6) && ((dcc_packet_handle[2] & DCC_ACCESSORY_EXTENDED_CV_MASK) == DCC_ACCESSORY_EXTENDED_CV_OMP)) {
+							//   2         3         4
+							//  (1110-CCVV VVVV-VVVV DDDD-DDDD)
+
+							uint16_t cv = 1 + dcc_packet_handle[3] + ((dcc_packet_handle[2] & DCC_CV_VARIABLE_HIGH_MASK) << 8);
+							uint8_t type = dcc_packet_handle[2] & DCC_CV_INSTRUCTION_TYPE_MASK;
+							uint8_t data = dcc_packet_handle[4];
+
+								
+							switch (type) {
+								case DCC_CV_VERIFY_BYTE:
+									break;
+								case DCC_CV_WRITE_BYTE:
+									dcc_handle_accessory_extended_cv_write(output_address, cv, data);
+									break;
+								case DCC_CV_BIT_MANIPULATE: {
+									uint8_t bit = data & DCC_CV_BIT_MANIPULATE_BIT_MASK;
+									bool value = data & DCC_CV_BIT_MANIPULATE_VAL_MASK;
+									uint8_t bittype = data & DCC_CV_BIT_MANIPULATE_MASK;
+									switch (bittype) {
+										case DCC_CV_BIT_MANIPULATE_VERIFY:
+											break;
+										case DCC_CV_BIT_MANIPULATE_WRITE:
+											dcc_handle_accessory_extended_cv_writebit(output_address, cv, bit, value);
+										break;
+									}
+									break;
+								}
+							}
+						}
 					}
 					break;
 				}
