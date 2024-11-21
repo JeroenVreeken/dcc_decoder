@@ -24,6 +24,8 @@
 
 
 #define CV_ADDRESS_SHORT	1
+#define CV_ADDRESS_ACC_EXT_L	1
+#define CV_ADDRESS_ACC_EXT_H	9
 #define CV_ADDRESS_LONG_H	17
 #define CV_ADDRESS_LONG_L	18
 #define CV_CONFIGURATION	29
@@ -36,10 +38,12 @@
 #define CV_OUTPUT_PWM_F0R	50
 #define CV_OUTPUT_PWM_F1	51
 
+#define CV_MANUFACTURER		112
+
 #define CV_CONFIGURATION_REVERSE		0x01
 #define CV_CONFIGURATION_28_128_SPEEDSTEPS	0x02
 #define CV_CONFIGURATION_EXTENDED_ADDRESS	0x20
-
+#define CV_CONFIGURATION_ACCESSORY		0x80
 
 
 #ifndef	__ASSEMBLER__
@@ -52,6 +56,10 @@ void cv_write_byte(uint16_t cv, uint8_t value);
 uint8_t cv_read_byte(uint16_t cv);
 
 bool cv_address_match(uint8_t address_h, uint8_t address_l);
+
+bool cv_address_accessory_extended_match(uint16_t output_address);
+void cv_address_accessory_extended_set(uint16_t output_address);
+uint16_t cv_address_accessory_extended_get(void);
 
 
 #endif // __ASSEMBLER__

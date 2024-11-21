@@ -124,31 +124,35 @@ int test_write(void)
 	ut_cv[29] = 2;
 	
 	printf("First write CV17 @broadcast: ");
-	dcc_handle_multifunction_cv_write(0, 0, 17, 200);
+	dcc_handle_multifunction_cv_write(0, 0, DCC_CV_WRITE_BYTE, 17, 200);
 	if (ut_cv[17] != 192) {
 		printf("CV wrong: %d (0x%02x)\n", ut_cv[17], ut_cv[17]);
+		r++;
 	} else {
 		printf("PASS\n");
 	}
 	printf("Second write CV17 @broadcast: ");
-	dcc_handle_multifunction_cv_write(0, 0, 17, 200);
+	dcc_handle_multifunction_cv_write(0, 0, DCC_CV_WRITE_BYTE, 17, 200);
 	if (ut_cv[17] != 200) {
 		printf("CV wrong: %d (0x%02x)\n", ut_cv[17], ut_cv[17]);
+		r++;
 	} else {
 		printf("PASS\n");
 	}
 
 	printf("First write CV17 @3 short: ");
-	dcc_handle_multifunction_cv_write(0, 3, 17, 192);
+	dcc_handle_multifunction_cv_write(0, 3, DCC_CV_WRITE_BYTE, 17, 192);
 	if (ut_cv[17] != 200) {
 		printf("CV wrong: %d (0x%02x)\n", ut_cv[17], ut_cv[17]);
+		r++;
 	} else {
 		printf("PASS\n");
 	}
 	printf("Second write CV17 @3 short: ");
-	dcc_handle_multifunction_cv_write(0, 3, 17, 192);
+	dcc_handle_multifunction_cv_write(0, 3, DCC_CV_WRITE_BYTE, 17, 192);
 	if (ut_cv[17] != 192) {
 		printf("CV wrong: %d (0x%02x)\n", ut_cv[17], ut_cv[17]);
+		r++;
 	} else {
 		printf("PASS\n");
 	}
@@ -159,16 +163,18 @@ int test_write(void)
 	ut_cv[18] = 3;
 
 	printf("First write CV1 @3 long: ");
-	dcc_handle_multifunction_cv_write(192, 3, 1, 99);
+	dcc_handle_multifunction_cv_write(192, 3, DCC_CV_WRITE_BYTE, 1, 99);
 	if (ut_cv[1] != 3) {
 		printf("CV wrong: %d (0x%02x)\n", ut_cv[1], ut_cv[1]);
+		r++;
 	} else {
 		printf("PASS\n");
 	}
 	printf("Second write CV1 @3 long: ");
-	dcc_handle_multifunction_cv_write(192, 3, 1, 99);
+	dcc_handle_multifunction_cv_write(192, 3, DCC_CV_WRITE_BYTE, 1, 99);
 	if (ut_cv[1] != 99) {
 		printf("CV wrong: %d (0x%02x)\n", ut_cv[1], ut_cv[1]);
+		r++;
 	} else {
 		printf("PASS\n");
 	}
@@ -179,30 +185,34 @@ int test_write(void)
 	ut_cv[18] = 3;
 
 	printf("First write CV1 @3 long: ");
-	dcc_handle_multifunction_cv_write(192, 3, 1, 99);
+	dcc_handle_multifunction_cv_write(192, 3, DCC_CV_WRITE_BYTE, 1, 99);
 	if (ut_cv[1] != 3) {
 		printf("CV wrong: %d (0x%02x)\n", ut_cv[1], ut_cv[1]);
+		r++;
 	} else {
 		printf("PASS\n");
 	}
 	printf("Between write CV1 @3 short: ");
-	dcc_handle_multifunction_cv_write(0, 3, 1, 99);
+	dcc_handle_multifunction_cv_write(0, 3, DCC_CV_WRITE_BYTE, 1, 99);
 	if (ut_cv[1] != 3) {
 		printf("CV wrong: %d (0x%02x)\n", ut_cv[1], ut_cv[1]);
+		r++;
 	} else {
 		printf("PASS\n");
 	}
 	printf("Between write CV1 @4 long: ");
-	dcc_handle_multifunction_cv_write(192, 4, 1, 99);
+	dcc_handle_multifunction_cv_write(192, 4, DCC_CV_WRITE_BYTE, 1, 99);
 	if (ut_cv[1] != 3) {
 		printf("CV wrong: %d (0x%02x)\n", ut_cv[1], ut_cv[1]);
+		r++;
 	} else {
 		printf("PASS\n");
 	}
 	printf("Second write CV1 @3 long: ");
-	dcc_handle_multifunction_cv_write(192, 3, 1, 99);
+	dcc_handle_multifunction_cv_write(192, 3, DCC_CV_WRITE_BYTE, 1, 99);
 	if (ut_cv[1] != 99) {
 		printf("CV wrong: %d (0x%02x)\n", ut_cv[1], ut_cv[1]);
+		r++;
 	} else {
 		printf("PASS\n");
 	}

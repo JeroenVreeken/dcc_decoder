@@ -31,9 +31,8 @@ void dcc_handle_accessory_extended(uint16_t output_address, uint8_t aspect) __at
 void dcc_handle_multifunction_speed(uint8_t address_h, uint8_t address_l, uint8_t speed, bool forward) __attribute__ ((weak, alias ("dcc_handle_stub")));
 void dcc_handle_multifunction_speedstep(uint8_t address_h, uint8_t address_l, uint8_t speed, bool forward) __attribute__ ((weak, alias ("dcc_handle_stub")));
 void dcc_handle_multifunction_fg1(uint8_t address_h, uint8_t address_l, bool fl, bool f1, bool f2, bool f3, bool f4) __attribute__ ((weak, alias ("dcc_handle_stub")));
-void dcc_handle_multifunction_cv_write(uint8_t address_h, uint8_t address_l, uint16_t cv, uint8_t value) __attribute__ ((weak, alias ("dcc_handle_stub")));
-void dcc_handle_multifunction_cv_writebit(uint8_t address_h, uint8_t address_l, uint16_t cv, uint8_t bit, bool value) __attribute__ ((weak, alias ("dcc_handle_stub")));
-void dcc_handle_accessory_extended_cv_write(uint16_t output_address, uint16_t cv, uint8_t value) __attribute__ ((weak, alias ("dcc_handle_stub")));
-void dcc_handle_accessory_extended_cv_writebit(uint16_t output_address, uint16_t cv, uint8_t bit, bool value) __attribute__ ((weak, alias ("dcc_handle_stub")));
+void dcc_handle_multifunction_cv_write(uint8_t address_h, uint8_t address_l, uint8_t type, uint16_t cv, uint8_t value) __attribute__ ((weak, alias ("dcc_handle_stub")));
+void dcc_handle_accessory_extended_cv_write(uint16_t output_address,  uint8_t type, uint16_t cv, uint8_t value) __attribute__ ((weak, alias ("dcc_handle_stub")));
+void dcc_handle_sm_cv_write(uint8_t type, uint16_t cv, uint8_t value) __attribute__ ((weak, alias ("dcc_handle_stub")));
 
 #pragma GCC diagnostic pop

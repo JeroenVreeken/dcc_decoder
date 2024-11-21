@@ -6,6 +6,7 @@ ARFLAGS= -r
 
 CFLAGS+= -MT $@ -MMD -MP -MF $(BUILD_DIR)$*.d
 
+
 $(BUILD_DIR)%.o : %.c
 	@echo "COMPILE: $<"
 	@$(CC) $(CFLAGS) -c $< -o $@

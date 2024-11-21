@@ -265,7 +265,9 @@ static void dcc_toggle(tick_t t_tick)
 
 // Copy of the received packet
 static uint8_t dcc_packet_handle[DCC_PACKET_MAX];
-
+#if defined(CONFIG_DCC_SERVICE_MODE)
+static uint8_t dcc_packet_reset_cnt = 0;
+#endif
 
 void dcc_decoder_handle(void)
 {
@@ -296,6 +298,7 @@ void dcc_decoder_handle(void)
 			uint8_t address_l;
 			
 			switch (address_type) {
+#if defined(CONFIG_DCC_ACCESSORY)
 				case DCC_ADDRESS_BASE_ACCESSORY: {
 					uint16_t add = address & ~DCC_ADDRESS_BASE_MASK;
 					// combine address bits
@@ -324,32 +327,13 @@ void dcc_decoder_handle(void)
 							uint16_t cv = 1 + dcc_packet_handle[3] + ((dcc_packet_handle[2] & DCC_CV_VARIABLE_HIGH_MASK) << 8);
 							uint8_t type = dcc_packet_handle[2] & DCC_CV_INSTRUCTION_TYPE_MASK;
 							uint8_t data = dcc_packet_handle[4];
-
-								
-							switch (type) {
-								case DCC_CV_VERIFY_BYTE:
-									break;
-								case DCC_CV_WRITE_BYTE:
-									dcc_handle_accessory_extended_cv_write(output_address, cv, data);
-									break;
-								case DCC_CV_BIT_MANIPULATE: {
-									uint8_t bit = data & DCC_CV_BIT_MANIPULATE_BIT_MASK;
-									bool value = data & DCC_CV_BIT_MANIPULATE_VAL_MASK;
-									uint8_t bittype = data & DCC_CV_BIT_MANIPULATE_MASK;
-									switch (bittype) {
-										case DCC_CV_BIT_MANIPULATE_VERIFY:
-											break;
-										case DCC_CV_BIT_MANIPULATE_WRITE:
-											dcc_handle_accessory_extended_cv_writebit(output_address, cv, bit, value);
-										break;
-									}
-									break;
-								}
-							}
+	
+							dcc_handle_accessory_extended_cv_write(output_address, type, cv, data);
 						}
 					}
 					break;
 				}
+#endif // CONFIG_DCC_ACCESSORY
 				case DCC_ADDRESS_BASE_LONG:
 					address_h = address;
 					pos++;
@@ -369,7 +353,7 @@ void dcc_decoder_handle(void)
 							}
 							break;
 						}
-
+#ifdef CONFIG_DCC_MULTIFUNCTION
 						case DCC_INSTRUCTION_SPEED_F: {
 							uint8_t speed = dcc_packet_handle[pos+1] & DCC_SPEED_MASK;
 							dcc_handle_multifunction_speed(address_h, address_l, speed, true);
@@ -412,33 +396,43 @@ void dcc_decoder_handle(void)
 								uint8_t type = dcc_packet_handle[pos+1] & DCC_CV_INSTRUCTION_TYPE_MASK;
 								uint8_t data = dcc_packet_handle[pos+3];
 								
-								switch (type) {
-									case DCC_CV_VERIFY_BYTE:
-										break;
-									case DCC_CV_WRITE_BYTE:
-										dcc_handle_multifunction_cv_write(address_h, address_l, cv, data);
-										break;
-									case DCC_CV_BIT_MANIPULATE: {
-										uint8_t bit = data & DCC_CV_BIT_MANIPULATE_BIT_MASK;
-										bool value = data & DCC_CV_BIT_MANIPULATE_VAL_MASK;
-										uint8_t bittype = data & DCC_CV_BIT_MANIPULATE_MASK;
-										switch (bittype) {
-											case DCC_CV_BIT_MANIPULATE_VERIFY:
-												break;
-											case DCC_CV_BIT_MANIPULATE_WRITE:
-												dcc_handle_multifunction_cv_writebit(address_h, address_l, cv, bit, value);
-												break;
-										}
-										break;
-									}
-								}
+								dcc_handle_multifunction_cv_write(address_h, address_l, type, cv, data);
 							}
 							break;
 						}
-					}
+#endif // CONFIG_DCC_MULTIFUNCTION
+					} // instruction
 				}
+			} // switch address type
+			
+#if defined(CONFIG_DCC_SERVICE_MODE)
+			
+			bool is_sm = false;
+			if ((dcc_packet_reset_cnt >= DCC_SM_RESET_CNT_MIN) && 
+			    ((address & DCC_ADDRESS_SM_MASK) == DCC_ADDRESS_SM_DIRECT_MODE)) {
+				is_sm = true;
+				
+				// 0111 CCAA  AAAA AAAA  DDDD DDDD
+				
+				uint16_t cv = 1 + dcc_packet_handle[1] + ((dcc_packet_handle[0] & DCC_CV_VARIABLE_HIGH_MASK) << 8);
+				uint8_t data = dcc_packet_handle[2];
+				uint8_t type = dcc_packet_handle[0] & DCC_CV_INSTRUCTION_TYPE_MASK;
+				
+				dcc_handle_sm_cv_write(type, cv, data);
 			}
-		}
+			
+			if ((len == 3) & (dcc_packet_handle[0] == 0) && (dcc_packet_handle[1] == 0)) {
+				// 0000 0000  0000 000H
+				// H = 1 --> hard reset
+			
+				dcc_packet_reset_cnt++;
+			} else if (!is_sm) {
+				dcc_packet_reset_cnt = 0;
+			}
+#endif
+
+			
+		} // valid checksum
 	}
 }
 

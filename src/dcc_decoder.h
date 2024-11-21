@@ -36,9 +36,8 @@ void dcc_handle_accessory_extended(uint16_t output_address, uint8_t aspect);
 void dcc_handle_multifunction_speed(uint8_t address_h, uint8_t address_l, uint8_t speed, bool forward);		// 14 or 28 speed
 void dcc_handle_multifunction_speedstep(uint8_t address_h, uint8_t address_l, uint8_t speed, bool forward);	// 126 speed steps
 void dcc_handle_multifunction_fg1(uint8_t address_h, uint8_t address_l, bool fl, bool f1, bool f2, bool f3, bool f4);
-void dcc_handle_multifunction_cv_write(uint8_t address_h, uint8_t address_l, uint16_t cv, uint8_t value);
-void dcc_handle_multifunction_cv_writebit(uint8_t address_h, uint8_t address_l, uint16_t cv, uint8_t bit, bool value);
-void dcc_handle_accessory_extended_cv_write(uint16_t output_address, uint16_t cv, uint8_t value);
-void dcc_handle_accessory_extended_cv_writebit(uint16_t output_address, uint16_t cv, uint8_t bit, bool value);
+void dcc_handle_multifunction_cv_write(uint8_t address_h, uint8_t address_l, uint8_t type, uint16_t cv, uint8_t value);
+void dcc_handle_accessory_extended_cv_write(uint16_t output_address, uint8_t type, uint16_t cv, uint8_t value);
+void dcc_handle_sm_cv_write(uint8_t type, uint16_t cv, uint8_t value);
 
 #endif // _INCLUDE_DCC_DECODER_H_

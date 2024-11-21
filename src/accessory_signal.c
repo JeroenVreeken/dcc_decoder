@@ -21,11 +21,11 @@
  */
 
 #include <avr/wdt.h>
-#include <avr/eeprom.h>
 #include <string.h>
 
 #include "tick.h"
 #include "dcc_decoder.h"
+#include "cv.h"
 
 
 #define LED_BIT		PB5
@@ -40,42 +40,25 @@
 // PD2 is used for dcc
 // PC6 is used for reset
 
-#define LED_R0_BIT	PC0
-#define LED_R0_DDR	DDRC
-#define LED_R0_PORT	PORTC
-#define LED_G0_BIT	PC1
-#define LED_G0_DDR	DDRC
-#define LED_G0_PORT	PORTC
+struct signal_led {
+	volatile uint8_t *port_r;
+	volatile uint8_t *port_g;
+	volatile uint8_t *ddr_r;
+	volatile uint8_t *ddr_g;
+	uint8_t bit_r;
+	uint8_t bit_g;
+};
 
-#define LED_R1_BIT	PC2
-#define LED_R1_DDR	DDRC
-#define LED_R1_PORT	PORTC
-#define LED_G1_BIT	PC3
-#define LED_G1_DDR	DDRC
-#define LED_G1_PORT	PORTC
+static const struct signal_led signal_leds[] = {
+	{ .bit_r = 1 << PC0, .bit_g = 1 << PC1, .port_r = &PORTC, .port_g = &PORTC, .ddr_r = &DDRC, .ddr_g = &DDRC },
+	{ .bit_r = 1 << PC2, .bit_g = 1 << PC3, .port_r = &PORTC, .port_g = &PORTC, .ddr_r = &DDRC, .ddr_g = &DDRC },
+	{ .bit_r = 1 << PC4, .bit_g = 1 << PC5, .port_r = &PORTC, .port_g = &PORTC, .ddr_r = &DDRC, .ddr_g = &DDRC },
+	{ .bit_r = 1 << PD4, .bit_g = 1 << PD5, .port_r = &PORTD, .port_g = &PORTD, .ddr_r = &DDRD, .ddr_g = &DDRD },
+	{ .bit_r = 1 << PD6, .bit_g = 1 << PD7, .port_r = &PORTD, .port_g = &PORTD, .ddr_r = &DDRD, .ddr_g = &DDRD },
+	{ .bit_r = 1 << PB0, .bit_g = 1 << PB1, .port_r = &PORTB, .port_g = &PORTB, .ddr_r = &DDRB, .ddr_g = &DDRB },
+};
 
-#define LED_R2_BIT	PC4
-#define LED_R2_DDR	DDRC
-#define LED_R2_PORT	PORTC
-#define LED_G2_BIT	PC5
-#define LED_G2_DDR	DDRC
-#define LED_G2_PORT	PORTC
-
-#define LED_R3_BIT	PD4
-#define LED_R3_DDR	DDRD
-#define LED_R3_PORT	PORTD
-#define LED_G3_BIT	PD5
-#define LED_G3_DDR	DDRD
-#define LED_G3_PORT	PORTD
-
-#define LED_R4_BIT	PD6
-#define LED_R4_DDR	DDRD
-#define LED_R4_PORT	PORTD
-#define LED_G4_BIT	PD7
-#define LED_G4_DDR	DDRD
-#define LED_G4_PORT	PORTD
-
-#define NR_SIGNALS	5
+#define NR_SIGNALS	(sizeof(signal_leds)/sizeof(signal_leds[0]))
 
 enum led_state {
 	LED_OFF = 0x00,
@@ -114,12 +97,10 @@ static enum led_state aspect2state(uint8_t aspect)
 }
 
 
-static uint16_t * const config_decoder_address = 0;
-
 uint16_t decoder_address;
 static bool learning = false;
 
-uint8_t state_aspect[5] = {0};
+uint8_t state_aspect[NR_SIGNALS] = {0};
 
 
 void dcc_handle_reset(uint8_t address_h, uint8_t address_l)
@@ -135,7 +116,7 @@ void dcc_handle_accessory_extended(uint16_t add, uint8_t aspect)
 {
 	if (learning && aspect) {
 		decoder_address = add;
-		eeprom_write_word(config_decoder_address, decoder_address);
+		cv_address_accessory_extended_set(add);
 		learning = false;
 	}
 	if (add == DCC_ACCESSORY_BROADCAST_ADDRESS) {
@@ -158,6 +139,7 @@ static void led_status(void)
 {
 	tick_ms_t ms_now = tick_ms();
 	tick_ms_t blink_ms = ms_now - prev_ms;
+	uint8_t pwm = tick() >> 2;
 
 	if (blink_ms >= BLINK_MS) {
 		prev_ms += BLINK_MS;
@@ -181,77 +163,30 @@ static void led_status(void)
 		LED_PORT &= ~(1 << LED_BIT);
 	}
 	
-	enum led_state leds;
-	
-	leds = aspect2state(state_aspect[0]);
-	if (blink)
-		leds ^= leds >> 4;
-	if (leds & 1) {
-		LED_R0_PORT |= (1 << LED_R0_BIT);
-	} else {
-		LED_R0_PORT &= ~(1 << LED_R0_BIT);
-	}
-	if (leds & 2) {
-		LED_G0_PORT |= (1 << LED_G0_BIT);
-	} else {
-		LED_G0_PORT &= ~(1 << LED_G0_BIT);
-	}
-	
-	leds = aspect2state(state_aspect[1]);
-	if (blink)
-		leds ^= leds >> 4;
-	if (leds & 1) {
-		LED_R1_PORT |= (1 << LED_R1_BIT);
-	} else {
-		LED_R1_PORT &= ~(1 << LED_R1_BIT);
-	}
-	if (leds & 2) {
-		LED_G1_PORT |= (1 << LED_G1_BIT);
-	} else {
-		LED_G1_PORT &= ~(1 << LED_G1_BIT);
+	enum led_state leds[NR_SIGNALS];
+
+	int i;
+	for (i = 0; i < NR_SIGNALS; i++) {
+		enum led_state state = aspect2state(state_aspect[i]);
+		if (blink)
+			state ^= state >> 4;
+		uint8_t pwm1 = cv_read_byte(CV_MANUFACTURER + i * 2 + 0);
+		uint8_t pwm2 = cv_read_byte(CV_MANUFACTURER + i * 2 + 1);
+		state &= (pwm <= pwm1 ? 1 : 0) | (pwm <= pwm2 ? 2 : 0);
+		leds[i] = state;
+
+		if (leds[i] & 1) {
+			*signal_leds[i].port_r |= signal_leds[i].bit_r;
+		} else {
+			*signal_leds[i].port_r &= ~signal_leds[i].bit_r;
+		}
+		if (leds[i] & 2) {
+			*signal_leds[i].port_g |= signal_leds[i].bit_g;
+		} else {
+			*signal_leds[i].port_g &= ~signal_leds[i].bit_g;
+		}
 	}
 	
-	leds = aspect2state(state_aspect[2]);
-	if (blink)
-		leds ^= leds >> 4;
-	if (leds & 1) {
-		LED_R2_PORT |= (1 << LED_R2_BIT);
-	} else {
-		LED_R2_PORT &= ~(1 << LED_R2_BIT);
-	}
-	if (leds & 2) {
-		LED_G2_PORT |= (1 << LED_G2_BIT);
-	} else {
-		LED_G2_PORT &= ~(1 << LED_G2_BIT);
-	}
-	
-	leds = aspect2state(state_aspect[3]);
-	if (blink)
-		leds ^= leds >> 4;
-	if (leds & 1) {
-		LED_R3_PORT |= (1 << LED_R3_BIT);
-	} else {
-		LED_R3_PORT &= ~(1 << LED_R3_BIT);
-	}
-	if (leds & 2) {
-		LED_G3_PORT |= (1 << LED_G3_BIT);
-	} else {
-		LED_G3_PORT &= ~(1 << LED_G3_BIT);
-	}
-	
-	leds = aspect2state(state_aspect[4]);
-	if (blink)
-		leds ^= leds >> 4;
-	if (leds & 1) {
-		LED_R4_PORT |= (1 << LED_R4_BIT);
-	} else {
-		LED_R4_PORT &= ~(1 << LED_R4_BIT);
-	}
-	if (leds & 2) {
-		LED_G4_PORT |= (1 << LED_G4_BIT);
-	} else {
-		LED_G4_PORT &= ~(1 << LED_G4_BIT);
-	}
 }
 
 
@@ -263,37 +198,15 @@ static void led_init(void)
 	// Turn LED off
 	LED_PORT &= ~(1 << LED_BIT);
 
+	int i;
 
-	// R and G leds
-	LED_R0_DDR |= (1 << LED_R0_BIT);
-	LED_G0_DDR |= (1 << LED_G0_BIT);
-
-	LED_R1_DDR |= (1 << LED_R1_BIT);
-	LED_G1_DDR |= (1 << LED_G1_BIT);
-
-	LED_R2_DDR |= (1 << LED_R2_BIT);
-	LED_G2_DDR |= (1 << LED_G2_BIT);
-
-	LED_R3_DDR |= (1 << LED_R3_BIT);
-	LED_G3_DDR |= (1 << LED_G3_BIT);
-
-	LED_R4_DDR |= (1 << LED_R4_BIT);
-	LED_G4_DDR |= (1 << LED_G4_BIT);
-
-	LED_R0_PORT &= ~(1 << LED_R0_BIT);
-	LED_G0_PORT &= ~(1 << LED_G0_BIT);
-
-	LED_R1_PORT &= ~(1 << LED_R1_BIT);
-	LED_G1_PORT &= ~(1 << LED_G1_BIT);
-
-	LED_R2_PORT &= ~(1 << LED_R2_BIT);
-	LED_G2_PORT &= ~(1 << LED_G2_BIT);
-
-	LED_R3_PORT &= ~(1 << LED_R3_BIT);
-	LED_G3_PORT &= ~(1 << LED_G3_BIT);
-
-	LED_R4_PORT &= ~(1 << LED_R4_BIT);
-	LED_G4_PORT &= ~(1 << LED_G4_BIT);
+	for (i = 0; i < NR_SIGNALS; i++) {
+		// R and G leds
+		*signal_leds[i].ddr_r |= signal_leds[i].bit_r;
+		*signal_leds[i].ddr_g |= signal_leds[i].bit_g;
+		*signal_leds[i].port_r &= ~signal_leds[i].bit_r;
+		*signal_leds[i].port_g &= ~signal_leds[i].bit_g;
+	}
 }
 
 static void learning_init(void)
@@ -321,7 +234,7 @@ int main(void)
 	tick_init();
 	dcc_decoder_init();
 	
-	decoder_address = eeprom_read_word(config_decoder_address);
+	decoder_address = cv_address_accessory_extended_get();
 	
 	sei();
 	

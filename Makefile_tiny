@@ -13,7 +13,8 @@ CFLAGS+= -Wall -Werror -Os
 CFLAGS+= -mmcu=$(MCU) -DF_CPU=16000000UL 
 
 CFLAGS+= -DCONFIG_OC1B_PWM
-
+CFLAGS+= -DCONFIG_DCC_MULTIFUNCTION
+CFLAGS+= -DCONFIG_DCC_SERVICE_MODE
 
 # Set internal PLL to 16MHz
 AVRDUDE_FLAGS+= -U lfuse:w:0xf1:m -U hfuse:w:0xdd:m -U efuse:w:0xfe:m 

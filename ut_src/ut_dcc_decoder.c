@@ -732,6 +732,7 @@ struct test_handle {
 	
 	bool multifunction_cv_write_called;
 	bool multifunction_cv_writebit_called;
+	uint8_t type;
 	uint16_t cv;
 	uint8_t bit;
 	uint8_t value;
@@ -922,6 +923,9 @@ struct test_handle test_handles[] = {
 		.f4 = 1,
 	},
 	
+	// CV write:
+	// ????-????  1110-CCAA  AAAA-AAAA  111F-DBBB
+	
 	{ "cv write cv1 bit 0 1 @ 51", { 0x33, 0xe8, 0x00, 0xf8, 0x23 }, 5, true,
 		.multifunction_cv_writebit_called = true,
 		.address_h = 0,
@@ -1075,46 +1079,55 @@ void dcc_handle_multifunction_fg1(uint8_t address_h, uint8_t address_l, bool fl,
 
 
 bool dcc_handle_multifunction_cv_write_called;
+bool dcc_handle_multifunction_cv_writebit_called;
+uint8_t dcc_handle_type;
+uint8_t dcc_handle_bit;
 uint16_t dcc_handle_cv;
 uint8_t dcc_handle_value;
-void dcc_handle_multifunction_cv_write(uint8_t address_h, uint8_t address_l, uint16_t cv, uint8_t value)
+void dcc_handle_multifunction_cv_write(uint8_t address_h, uint8_t address_l, uint8_t type, uint16_t cv, uint8_t value)
 {
 	dcc_handle_multifunction_cv_write_called = true;
 	dcc_handle_address_h = address_h;
 	dcc_handle_address_l = address_l;
+	dcc_handle_type = type;
 	dcc_handle_cv = cv;
 	dcc_handle_value = value;
-}
-bool dcc_handle_multifunction_cv_writebit_called;
-uint8_t dcc_handle_bit;
-void dcc_handle_multifunction_cv_writebit(uint8_t address_h, uint8_t address_l, uint16_t cv, uint8_t bit, bool value)
-{
-	dcc_handle_multifunction_cv_writebit_called = true;
-	dcc_handle_address_h = address_h;
-	dcc_handle_address_l = address_l;
-	dcc_handle_bit = bit;
-	dcc_handle_cv = cv;
-	dcc_handle_value = value;
+	
+	if (type == DCC_CV_BIT_MANIPULATE) {
+		if ((value & DCC_CV_BIT_MANIPULATE_MASK) == DCC_CV_BIT_MANIPULATE_WRITE) {
+			dcc_handle_bit = value & DCC_CV_BIT_MANIPULATE_BIT_MASK;
+			dcc_handle_value = (value & DCC_CV_BIT_MANIPULATE_VAL_MASK) != 0;
+			dcc_handle_multifunction_cv_writebit_called = true;
+			dcc_handle_multifunction_cv_write_called = false;
+		}
+	}
 }
 
 
 bool dcc_handle_accessory_extended_cv_write_called;
-void dcc_handle_accessory_extended_cv_write(uint16_t output_address, uint16_t cv, uint8_t value)
+bool dcc_handle_accessory_extended_cv_writebit_called;
+void dcc_handle_accessory_extended_cv_write(uint16_t output_address, uint8_t type, uint16_t cv, uint8_t value)
 {
 	dcc_handle_accessory_extended_cv_write_called = true;
 	dcc_handle_accessory_extended_output_address = output_address;
+	dcc_handle_type = type;
 	dcc_handle_cv = cv;
 	dcc_handle_value = value;
+
+	if (type == DCC_CV_BIT_MANIPULATE) {
+		if ((value & DCC_CV_BIT_MANIPULATE_MASK) == DCC_CV_BIT_MANIPULATE_WRITE) {
+			dcc_handle_bit = value & DCC_CV_BIT_MANIPULATE_BIT_MASK;
+			dcc_handle_value = (value & DCC_CV_BIT_MANIPULATE_VAL_MASK) != 0;
+			dcc_handle_accessory_extended_cv_writebit_called = true;
+			dcc_handle_accessory_extended_cv_write_called = false;
+		}
+	}
 }
 
-bool dcc_handle_accessory_extended_cv_writebit_called;
-void dcc_handle_accessory_extended_cv_writebit(uint16_t output_address, uint16_t cv, uint8_t bit, bool value)
+
+void dcc_handle_sm_cv_write(uint8_t type, uint16_t cv, uint8_t value)
 {
-	dcc_handle_accessory_extended_cv_writebit_called = true;
-	dcc_handle_accessory_extended_output_address = output_address;
-	dcc_handle_bit = bit;
-	dcc_handle_cv = cv;
-	dcc_handle_value = value;
+
 }
 
 
@@ -1197,10 +1210,10 @@ int main(int argc, char **argv)
 		dcc_handle_multifunction_speed_called = false;
 		dcc_handle_multifunction_speedstep_called = false;
 		dcc_handle_multifunction_fg1_called = false;
-		dcc_handle_multifunction_cv_writebit_called = false;
 		dcc_handle_multifunction_cv_write_called = false;
-		dcc_handle_accessory_extended_cv_writebit_called = false;
+		dcc_handle_multifunction_cv_writebit_called = false;
 		dcc_handle_accessory_extended_cv_write_called = false;
+		dcc_handle_accessory_extended_cv_writebit_called = false;
 		
 		/******************
 		    Perform test
@@ -1322,31 +1335,6 @@ int main(int argc, char **argv)
 		}
 
 
-		if (test_handles[i].multifunction_cv_writebit_called != dcc_handle_multifunction_cv_writebit_called) {
-			r_test++;
-			printf("multifunction cv writebit handler not/unexpected called: %d\n", dcc_handle_multifunction_cv_writebit_called);
-		}
-		if (test_handles[i].multifunction_cv_writebit_called) {
-			if (test_handles[i].address_l != dcc_handle_address_l) {
-				r_test++;
-			}
-			if (test_handles[i].address_h != dcc_handle_address_h) {
-				r_test++;
-			}
-			if (test_handles[i].cv != dcc_handle_cv) {
-				r_test++;
-			}
-			if (test_handles[i].bit != dcc_handle_bit) {
-				r_test++;
-			}
-			if (test_handles[i].value != dcc_handle_value) {
-				r_test++;
-			}
-			if (r_test) {
-				printf("cvbit not properly written: (%d, %d, %d) @ 0x%02x 0x%02x\n",
-				    dcc_handle_cv, dcc_handle_bit, dcc_handle_value, dcc_handle_address_h, dcc_handle_address_l);
-			}
-		}
 		
 		if (test_handles[i].multifunction_cv_write_called != dcc_handle_multifunction_cv_write_called) {
 			r_test++;
@@ -1354,46 +1342,59 @@ int main(int argc, char **argv)
 		}
 		if (test_handles[i].multifunction_cv_write_called) {
 			if (test_handles[i].address_l != dcc_handle_address_l) {
+				printf("address_l mismatch\n");
 				r_test++;
 			}
 			if (test_handles[i].address_h != dcc_handle_address_h) {
+				printf("address_h mismatch\n");
 				r_test++;
 			}
 			if (test_handles[i].cv != dcc_handle_cv) {
+				printf("cv mismatch\n");
 				r_test++;
 			}
 			if (test_handles[i].value != dcc_handle_value) {
+				printf("value mismatch\n");
 				r_test++;
 			}
 			if (r_test) {
-				printf("cv not properly written: (%d, 0x%02x) @ 0x%02x 0x%02x\n",
-				    dcc_handle_cv, dcc_handle_value, dcc_handle_address_h, dcc_handle_address_l);
+				printf("cv not properly written: (%d, 0x%02x) type: 0x%02x @ 0x%02x 0x%02x\n",
+				    dcc_handle_cv, dcc_handle_value, dcc_handle_type, dcc_handle_address_h, dcc_handle_address_l);
 			}
 		}
 
-
-		if (test_handles[i].accessory_extended_cv_writebit_called != dcc_handle_accessory_extended_cv_writebit_called) {
+		if (test_handles[i].multifunction_cv_writebit_called != dcc_handle_multifunction_cv_writebit_called) {
 			r_test++;
-			printf("accessory_extended cv writebit handler not/unexpected called: %d\n", dcc_handle_accessory_extended_cv_writebit_called);
+			printf("multifunction cv writebit handler not/unexpected called: %d\n", dcc_handle_multifunction_cv_writebit_called);
 		}
-		if (test_handles[i].accessory_extended_cv_writebit_called) {
-			if (dcc_handle_accessory_extended_output_address != test_handles[i].accessory_extended_add)
+		if (test_handles[i].multifunction_cv_writebit_called) {
+			if (test_handles[i].address_l != dcc_handle_address_l) {
+				printf("address_l mismatch\n");
 				r_test++;
-			if (test_handles[i].cv != dcc_handle_cv) {
+			}
+			if (test_handles[i].address_h != dcc_handle_address_h) {
+				printf("address_h mismatch\n");
 				r_test++;
 			}
 			if (test_handles[i].bit != dcc_handle_bit) {
+				printf("bit mismatch\n");
+				r_test++;
+			}
+			if (test_handles[i].cv != dcc_handle_cv) {
+				printf("cv mismatch\n");
 				r_test++;
 			}
 			if (test_handles[i].value != dcc_handle_value) {
+				printf("value %d != %d mismatch\n", test_handles[i].value, dcc_handle_value);
 				r_test++;
 			}
 			if (r_test) {
-				printf("cvbit not properly written: (%d, %d, %d) @ 0x%04x\n",
-				    dcc_handle_cv, dcc_handle_bit, dcc_handle_value, dcc_handle_accessory_extended_output_address);
+				printf("cv bit not properly written: (%d, 0x%02x) bit: 0x%02x @ 0x%02x 0x%02x\n",
+				    dcc_handle_cv, dcc_handle_value, dcc_handle_bit, dcc_handle_address_h, dcc_handle_address_l);
 			}
 		}
-		
+
+
 		if (test_handles[i].accessory_extended_cv_write_called != dcc_handle_accessory_extended_cv_write_called) {
 			r_test++;
 			printf("accessory_extended cv write handler not/unexpected called: %d\n", dcc_handle_accessory_extended_cv_write_called);
@@ -1402,14 +1403,39 @@ int main(int argc, char **argv)
 			if (dcc_handle_accessory_extended_output_address != test_handles[i].accessory_extended_add)
 				r_test++;
 			if (test_handles[i].cv != dcc_handle_cv) {
+				printf("cv mismatch\n");
+				r_test++;
+			}
+			if (test_handles[i].value != dcc_handle_value) {
+				printf("value %d != %d mismatch\n", test_handles[i].value, dcc_handle_value);
+				r_test++;
+			}
+			if (r_test) {
+				printf("acc cv not properly written: (%d, 0x%02x) bit: 0x%02x @ 0x%04x\n",
+				    dcc_handle_cv, dcc_handle_value, dcc_handle_bit, dcc_handle_accessory_extended_output_address);
+			}
+		}
+		
+
+		if (test_handles[i].accessory_extended_cv_writebit_called != dcc_handle_accessory_extended_cv_writebit_called) {
+			r_test++;
+			printf("accessory_extended cv writebit handler not/unexpected called: %d\n", dcc_handle_accessory_extended_cv_writebit_called);
+		}
+		if (test_handles[i].accessory_extended_cv_writebit_called) {
+			if (dcc_handle_accessory_extended_output_address != test_handles[i].accessory_extended_add)
+				r_test++;
+			if (test_handles[i].bit != dcc_handle_bit) {
+				r_test++;
+			}
+			if (test_handles[i].cv != dcc_handle_cv) {
 				r_test++;
 			}
 			if (test_handles[i].value != dcc_handle_value) {
 				r_test++;
 			}
 			if (r_test) {
-				printf("cv not properly written: (%d, 0x%02x) @ 0x%04x\n",
-				    dcc_handle_cv, dcc_handle_value, dcc_handle_accessory_extended_output_address);
+				printf("acc cv bit not properly written: (%d, 0x%02x) type: 0x%02x @ 0x%04x\n",
+				    dcc_handle_cv, dcc_handle_value, dcc_handle_type, dcc_handle_accessory_extended_output_address);
 			}
 		}
 		

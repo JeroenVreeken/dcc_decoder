@@ -11,6 +11,7 @@ SIZE=$(TARGET)-size
 
 CFLAGS+= -Wall -Werror -Os
 CFLAGS+= -mmcu=$(MCU) -DF_CPU=16000000UL 
+CFLAGS+= -DCONFIG_DCC_ACCESSORY
 
 
 LDFLAGS=  -mmcu=${MCU} 
@@ -18,7 +19,8 @@ LDFLAGS+= ${CFLAGS}
 
 
 
-all: build_nano/accessory_servo.hex build_nano/accessory_signal.hex
+all: build_nano/accessory_servo.hex build_nano/accessory_signal.hex build_nano/accessory_signal.eep
+
 
 
 accessory_servo_OBJS= accessory_servo.o dcc_decoder.o pwm_servo.o stub.o
@@ -27,7 +29,7 @@ build_nano/accessory_servo: $(addprefix $(BUILD_DIR), $(accessory_servo_OBJS))
 build_nano/accessory_servo.hex: build_nano/accessory_servo
 
 
-accessory_signal_OBJS= accessory_signal.o dcc_decoder.o stub.o tick.o
+accessory_signal_OBJS= accessory_signal.o accessory_signal_cv.o dcc_decoder.o stub.o tick.o cv.o
 build_nano/accessory_signal: $(addprefix $(BUILD_DIR), $(accessory_signal_OBJS))
 
 build_nano/accessory_signal.hex: build_nano/accessory_signal
@@ -41,8 +43,9 @@ program_servo: build_nano/accessory_servo.hex
 	sudo avrdude -c usbasp -p m328p -U flash:w:build_nano/accessory_servo.hex
 
 
-program_signal: build_nano/accessory_signal.hex
-	sudo avrdude -c usbasp -p m328p -U flash:w:build_nano/accessory_signal.hex
+
+program_signal: build_nano/accessory_signal.hex build_nano/accessory_signal.eep
+	sudo avrdude -c usbasp -p m328p -U flash:w:build_nano/accessory_signal.hex -Ueeprom:w:build_nano/accessory_signal.eep
 
 
 
