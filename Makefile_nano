@@ -23,7 +23,7 @@ all: build_nano/accessory_servo.hex build_nano/accessory_signal.hex build_nano/a
 
 
 
-accessory_servo_OBJS= accessory_servo.o dcc_decoder.o pwm_servo.o stub.o
+accessory_servo_OBJS= accessory_servo.o dcc_decoder.o pwm_servo.o stub.o tick.o
 build_nano/accessory_servo: $(addprefix $(BUILD_DIR), $(accessory_servo_OBJS))
 
 build_nano/accessory_servo.hex: build_nano/accessory_servo

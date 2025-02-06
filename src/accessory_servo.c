@@ -50,11 +50,23 @@ enum pair_state {
 	PAIR_IDLE = 0,
 	PAIR_OUT0 = 1,
 	PAIR_OUT1 = 2,
-	PAIR_CONFLICT = 3,
+	PAIR_MASK = 3, PAIR_CONFLICT = 3, // both selected -> conflict
+	PAIR_GOTO0 = 4,
+	PAIR_GOTO1 = 8,
+	PAIR_GOTO = 12,
 };
 
-uint8_t pair_states[PAIR_NR];
 
+
+struct pair {
+	uint8_t state;
+	uint8_t pwm[2];
+	uint8_t pwm_cur;
+	uint8_t pwm_prev;
+	tick_ms_t t;
+} pairs[PAIR_NR];
+
+#define GOTO_T_MS	500
 
 
 void dcc_handle_reset(uint8_t address_h, uint8_t address_l)
@@ -66,10 +78,7 @@ void dcc_handle_reset(uint8_t address_h, uint8_t address_l)
 	
 	int i;
 	for (i = 0; i < PAIR_NR; i++) {
-		pair_states[i] = PAIR_IDLE;
-		pair_states[i] = PAIR_IDLE;
-		pair_states[i] = PAIR_IDLE;
-		pair_states[i] = PAIR_IDLE;
+		pairs[i].state = PAIR_IDLE;
 	}
 }
 
@@ -81,20 +90,41 @@ void dcc_handle_accessory_basic(uint16_t add, uint8_t pair, uint8_t output, bool
 		learning = false;
 	}
 	if (add == decoder_address || add == DCC_ACCESSORY_BROADCAST_ADDRESS) {
+		uint8_t state = pairs[pair].state;
+		uint8_t state_masked = state & PAIR_MASK;
 		if (output == 0) {
 			if (value) {
-				pair_states[pair] |= PAIR_OUT0;
+				if (state_masked != PAIR_OUT0) {
+					state |= PAIR_GOTO0;
+					uint8_t pwm = pairs[pair].pwm_cur;
+					if (!pwm)
+						pwm = pairs[pair].pwm[0];
+					pairs[pair].pwm_prev = pwm;
+					pairs[pair].t = tick_ms();
+				}
+				state |= PAIR_OUT0;
+				state &= ~PAIR_GOTO1;
 			} else {
-				pair_states[pair] &= ~PAIR_OUT0;
+				state &= ~PAIR_OUT0;
 			}
 		}
 		if (output == 1) {
 			if (value) {
-				pair_states[pair] |= PAIR_OUT1;
+				if (state_masked != PAIR_OUT1) {
+					state |= PAIR_GOTO1;
+					uint8_t pwm = pairs[pair].pwm_cur;
+					if (!pwm)
+						pwm = pairs[pair].pwm[1];
+					pairs[pair].pwm_prev = pwm;
+					pairs[pair].t = tick_ms();
+				}
+				state |= PAIR_OUT1;
+				state &= ~PAIR_GOTO0;
 			} else {
-				pair_states[pair] &= ~PAIR_OUT1;
+				state &= ~PAIR_OUT1;
 			}
 		}
+		pairs[pair].state = state;
 	}
 }
 
@@ -102,7 +132,7 @@ void dcc_handle_accessory_basic(uint16_t add, uint8_t pair, uint8_t output, bool
 
 static void led_status(void)
 {
-	if (learning) {
+	if (learning || (pairs[0].state & PAIR_GOTO)) {
 		// Turn LED on
 		LED_PORT |= (1 << LED_BIT);
 	} else {
@@ -179,6 +209,7 @@ int main(void)
 	
 	while (1) {
 		wdt_reset();
+		tick_handle();
 		learning_status();
 		dcc_decoder_handle();
 		led_status();
@@ -188,19 +219,45 @@ int main(void)
 			uint8_t pair = adc_channel / 2;
 			uint8_t output = adc_channel & 1;
 			
-			if (((pair_states[pair] == PAIR_OUT0) && (output == 0)) ||
-			    ((pair_states[pair] == PAIR_OUT1) && (output == 1)) ) {
-				uint8_t pwm = ADC >> 2;
-				pwm_set(pair, pwm);
-			}
-			if (pair_states[pair] == PAIR_IDLE || pair_states[pair] == PAIR_CONFLICT) {
-				pwm_set(pair, 0);
-			}
+			uint8_t pwm = ADC >> 2;
+			pairs[pair].pwm[output] = pwm;
 
-			
 			adc_channel++;
 			adc_channel &= 7;
 			adc_start_read(adc_channel);
+		}
+		
+		int i;
+		for (i = 0; i < PAIR_NR; i++) {
+			uint8_t state = pairs[i].state;
+			uint8_t state_masked = state & PAIR_MASK;
+			
+			uint8_t pwm = 0;
+			
+			if (state_masked == PAIR_OUT0) {
+				pwm = pairs[i].pwm[0];
+			}
+			if (state_masked == PAIR_OUT1) {
+				pwm = pairs[i].pwm[1];
+			}
+			if (state == PAIR_IDLE) {
+				pwm = 0;
+			}
+			if (state_masked == PAIR_CONFLICT) {
+				pwm = 0;
+			} else if (state & PAIR_GOTO) {
+				long diff = pwm - pairs[i].pwm_prev;
+				int16_t t = tick_ms() - pairs[i].t;
+				if (t <= GOTO_T_MS) {
+					pwm = pairs[i].pwm_prev + ((diff * t) / GOTO_T_MS);
+				} else {
+					pairs[i].state = state_masked;
+				}
+			}
+
+			if (pwm)
+				pairs[i].pwm_cur = pwm;
+			pwm_set(i, pwm);
 		}
 	}
 	
