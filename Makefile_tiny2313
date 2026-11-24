@@ -1,0 +1,43 @@
+VPATH= src
+CFLAGS+= -Isrc
+
+BUILD_DIR=build_tiny2313/
+
+TARGET=avr
+MCU=attiny2313a
+CC=${TARGET}-gcc
+OBJCOPY=${TARGET}-objcopy
+SIZE=$(TARGET)-size
+
+CFLAGS+= -Wall -Werror -Os
+CFLAGS+= -mmcu=$(MCU) -DF_CPU=8000000UL 
+CFLAGS+= -DCONFIG_DCC_ACCESSORY
+
+# Set internal clock to 8MHz
+AVRDUDE_FLAGS+= -U lfuse:w:0xE4:m -U hfuse:w:0xDD:m -U efuse:w:0xFE:m 
+
+LDFLAGS=  -mmcu=${MCU} 
+LDFLAGS+= ${CFLAGS}
+
+
+all: build_tiny2313/accessory_mdd.hex
+
+
+accessory_mdd_OBJS= accessory_mdd.o dcc_decoder.o stub.o tick.o
+build_tiny2313/accessory_mdd: $(addprefix $(BUILD_DIR), $(accessory_mdd_OBJS))
+
+build_tiny2313/accessory_mdd.hex: build_tiny2313/accessory_mdd
+
+
+
+clean:
+	rm -rf build_tiny2313/*
+
+
+program_mdd: build_tiny2313/accessory_mdd.hex
+	sudo avrdude -c usbasp -p m2313a $(AVRDUDE_FLAGS) -U flash:w:build_tiny2313/accessory_mdd.hex
+
+
+
+include build.mk
+

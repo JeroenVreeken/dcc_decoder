@@ -22,6 +22,7 @@
 
 #include <avr/wdt.h>
 #include <avr/eeprom.h>
+#include <avr/io.h>
 
 #include "tick.h"
 #include "pwm.h"

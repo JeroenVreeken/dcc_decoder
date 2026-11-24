@@ -112,6 +112,39 @@ static inline tick_t tick(void)
 
 
 
+#elif defined (__AVR_ATtiny2313A__)
+
+
+typedef uint8_t tick_t;
+
+
+#define TICK_PRESCALER 64
+
+#define T1_PRESCALER_64		(            (1 << CS11)|(1 << CS10))
+
+static inline void tick_init(void)
+{
+	// Configure T1
+
+	// Configure T1
+
+	TCCR1A = 0;// normal mode, no output pins.
+	
+#if (TICK_PRESCALER==64)
+	TCCR1B = T1_PRESCALER_64;
+#else
+#error no prescaler
+#endif
+	
+	TCCR1C = 0;
+}
+
+static inline tick_t tick(void)
+{
+	return TCNT1;
+}
+
+
 
 #else
 #error New platform?

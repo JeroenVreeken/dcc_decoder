@@ -1,17 +1,22 @@
+MAKEFLAGS += --no-print-directory
 
 
-all: nano tiny test
+all: nano tiny tiny2313 test
 
 nano:
-	@make -f Makefile_nano
-
+	@$(MAKE) -f Makefile_nano
+	
 tiny:
-	@make -f Makefile_tiny
+	@$(MAKE) -f Makefile_tiny
+
+tiny2313:
+	@$(MAKE) -f Makefile_tiny2313
 
 test:
-	@make -f Makefile_ut
+	@$(MAKE) -f Makefile_ut
 
 clean:
-	@make -f Makefile_nano clean
-	@make -f Makefile_tiny clean
-	@make -f Makefile_ut clean
+	@$(MAKE) -f Makefile_nano clean
+	@$(MAKE) -f Makefile_tiny clean
+	@$(MAKE) -f Makefile_tiny2313 clean
+	@$(MAKE) -f Makefile_ut clean

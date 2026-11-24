@@ -482,4 +482,24 @@ void dcc_decoder_init(void)
 }
 
 
+#elif defined (__AVR_ATtiny2313A__)
+
+void dcc_decoder_init(void)
+{
+	// PD2 as input
+	DDRD &= ~(1 << PD2);
+	// pull up
+	PORTD |= (1 << PD2); 
+
+	// INT0 on any edge
+	MCUCR |= (1<<ISC00);
+	
+	// enable INT0
+	GIMSK |= (1<<INT0);
+
+	// note: still needs sei()!!!
+}
+
+#else
+#error New platform?
 #endif
