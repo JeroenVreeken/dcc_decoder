@@ -9,11 +9,11 @@ CFLAGS+= -MT $@ -MMD -MP -MF $(BUILD_DIR)$*.d
 
 $(BUILD_DIR)%.o : %.c
 	@echo "COMPILE: $<"
-	@$(CC) $(CFLAGS) -c $< -o $@
+	@$(CC) $(CFLAGS) $($*_CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)%.o : %.S
 	@echo "ASSEMBLE: $<"
-	@$(CC) $(CFLAGS) -c $< -o $@
+	@$(CC) $(CFLAGS) $($*_CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)%: $(BUILD_DIR)%.o
 	@echo "   LINK: $@"

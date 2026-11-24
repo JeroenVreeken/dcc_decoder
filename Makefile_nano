@@ -19,7 +19,9 @@ LDFLAGS+= ${CFLAGS}
 
 
 
-all: build_nano/accessory_servo.hex build_nano/accessory_signal.hex build_nano/accessory_signal.eep
+all: build_nano/accessory_servo.hex 
+all: build_nano/accessory_signal_2led.hex build_nano/accessory_signal_2led.eep
+all: build_nano/accessory_signal_3led.hex build_nano/accessory_signal_3led.eep
 
 
 
@@ -29,11 +31,18 @@ build_nano/accessory_servo: $(addprefix $(BUILD_DIR), $(accessory_servo_OBJS))
 build_nano/accessory_servo.hex: build_nano/accessory_servo
 
 
-accessory_signal_OBJS= accessory_signal.o accessory_signal_cv.o dcc_decoder.o stub.o tick.o cv.o
-build_nano/accessory_signal: $(addprefix $(BUILD_DIR), $(accessory_signal_OBJS))
+accessory_signal_2led_OBJS= accessory_signal_2led.o accessory_signal_cv.o dcc_decoder.o stub.o tick.o cv.o
+build_nano/accessory_signal_2led: $(addprefix $(BUILD_DIR), $(accessory_signal_2led_OBJS))
+accessory_signal_2led_CFLAGS=-DCONFIG_2LED
 
-build_nano/accessory_signal.hex: build_nano/accessory_signal
+build_nano/accessory_signal_2led.hex: build_nano/accessory_signal_2led
 
+
+accessory_signal_3led_OBJS= accessory_signal_3led.o accessory_signal_cv.o dcc_decoder.o stub.o tick.o cv.o
+build_nano/accessory_signal_3led: $(addprefix $(BUILD_DIR), $(accessory_signal_3led_OBJS))
+accessory_signal_3led_CFLAGS=-DCONFIG_3LED
+
+build_nano/accessory_signal_3led.hex: build_nano/accessory_signal_3led
 
 clean:
 	rm -rf build_nano/*
@@ -44,8 +53,11 @@ program_servo: build_nano/accessory_servo.hex
 
 
 
-program_signal: build_nano/accessory_signal.hex build_nano/accessory_signal.eep
-	sudo avrdude -c usbasp -p m328p -U flash:w:build_nano/accessory_signal.hex -Ueeprom:w:build_nano/accessory_signal.eep
+program_signal_2led: build_nano/accessory_signal_2led.hex build_nano/accessory_signal_2led.eep
+	sudo avrdude -c usbasp -p m328p -U flash:w:build_nano/accessory_signal_2led.hex -Ueeprom:w:build_nano/accessory_signal_2led.eep
+
+program_signal_3led: build_nano/accessory_signal_3led.hex build_nano/accessory_signal_3led.eep
+	sudo avrdude -c usbasp -p m328p -U flash:w:build_nano/accessory_signal_3led.hex -Ueeprom:w:build_nano/accessory_signal_3led.eep
 
 
 

@@ -26,7 +26,7 @@ all: $(BUILD_OUTPUT)
 
 $(BUILD_DIR)%.output: $(BUILD_DIR)%
 	@echo "     UT: $<"
-	@$< > $@ || (cat $@ && rm $@ && false)
+	@($< > $@ || cat $@) && rm $@
 
 
 clean:

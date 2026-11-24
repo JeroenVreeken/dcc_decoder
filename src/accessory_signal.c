@@ -37,18 +37,46 @@
 #define LEARNING_PORT	PORTB
 #define LEARNING_PIN	PINB
 
-// PD2 is used for dcc
-// PC6 is used for reset
+
+// PB0 signal led			R6	G4
+// PB1 signal led			G6	Y4
+// PB2
+// PB3 			(mosi)
+// PB4 learning button	(miso)
+// PB5 learning led	(sck)
+
+// PC0 signal led			R1	R1
+// PC1 signal led			G1	G1
+// PC2 signal led			R2	Y1
+// PC3 signal led			G2	R2
+// PC4 signal led			R3	G2
+// PC5 signal led			G3	Y2
+// PC6 reset
+
+// PD0 			rxd
+// PD1			txd
+// PD2 dcc input
+// PD3
+// PD4 signal led			R4	R3
+// PD5 signal led			G4	G3
+// PD6 signal led			R5	Y3
+// PD7 signal led			G5	R4
 
 struct signal_led {
 	volatile uint8_t *port_r;
 	volatile uint8_t *port_g;
 	volatile uint8_t *ddr_r;
 	volatile uint8_t *ddr_g;
+#if defined CONFIG_3LED
+	volatile uint8_t *port_y;
+	volatile uint8_t *ddr_y;
+	uint8_t bit_y;
+#endif
 	uint8_t bit_r;
 	uint8_t bit_g;
 };
 
+#if defined CONFIG_2LED
 static const struct signal_led signal_leds[] = {
 	{ .bit_r = 1 << PC0, .bit_g = 1 << PC1, .port_r = &PORTC, .port_g = &PORTC, .ddr_r = &DDRC, .ddr_g = &DDRC },
 	{ .bit_r = 1 << PC2, .bit_g = 1 << PC3, .port_r = &PORTC, .port_g = &PORTC, .ddr_r = &DDRC, .ddr_g = &DDRC },
@@ -57,21 +85,40 @@ static const struct signal_led signal_leds[] = {
 	{ .bit_r = 1 << PD6, .bit_g = 1 << PD7, .port_r = &PORTD, .port_g = &PORTD, .ddr_r = &DDRD, .ddr_g = &DDRD },
 	{ .bit_r = 1 << PB0, .bit_g = 1 << PB1, .port_r = &PORTB, .port_g = &PORTB, .ddr_r = &DDRB, .ddr_g = &DDRB },
 };
+#endif
+#if defined CONFIG_3LED
+static const struct signal_led signal_leds[] = {
+	{ .bit_r = 1 << PC0, .bit_g = 1 << PC1, .bit_y = 1 << PC2, .port_r = &PORTC, .port_g = &PORTC, .port_y = &PORTC, .ddr_r = &DDRC, .ddr_g = &DDRC, .ddr_y = &DDRC },
+	{ .bit_r = 1 << PC3, .bit_g = 1 << PC4, .bit_y = 1 << PC5, .port_r = &PORTC, .port_g = &PORTC, .port_y = &PORTC, .ddr_r = &DDRC, .ddr_g = &DDRC, .ddr_y = &DDRC },
+	{ .bit_r = 1 << PD4, .bit_g = 1 << PD5, .bit_y = 1 << PD6, .port_r = &PORTD, .port_g = &PORTD, .port_y = &PORTD, .ddr_r = &DDRD, .ddr_g = &DDRD, .ddr_y = &DDRD },
+	{ .bit_r = 1 << PD7, .bit_g = 1 << PB0, .bit_y = 1 << PB1, .port_r = &PORTD, .port_g = &PORTB, .port_y = &PORTB, .ddr_r = &DDRD, .ddr_g = &DDRB, .ddr_y = &DDRB },
+};
+#endif
 
 #define NR_SIGNALS	(sizeof(signal_leds)/sizeof(signal_leds[0]))
 
+// 1 --> red
+// 2 --> green
+// 4 --> yellow
+// 8 --> white
+// 10
+// 20--> green blink
+// 40--> yellow blink
+// 80
 enum led_state {
 	LED_OFF = 0x00,
 	LED_RED = 0x01,
+	LED_RED_BLINK = 0x11,
 	LED_GREEN = 0x02,
 	LED_GREEN_BLINK = 0x22,
-	LED_GREEN_BLINK_WHITE = 0x26,
-	LED_YELLOW = 0x03,
-	LED_WHITE = 0x04,
-	LED_YELLOW_WHITE = 0x07,
-	LED_YELLOW_BLINK = 0x33,
-	LED_YELLOW_WHITE_BLINK = 0x47,
+	LED_GREEN_BLINK_WHITE = 0x2a,
+	LED_YELLOW = 0x04,
+	LED_WHITE = 0x08,
+	LED_YELLOW_WHITE = 0x0c,
+	LED_YELLOW_BLINK = 0x44,
+	LED_YELLOW_WHITE_BLINK = 0x8c,
 };
+
 
 static enum led_state aspect2state(uint8_t aspect)
 {
@@ -93,6 +140,8 @@ static enum led_state aspect2state(uint8_t aspect)
 			return LED_YELLOW_BLINK;
 		case DCC_ASPECT_INITIATE_BRAKING:
 			return LED_YELLOW_WHITE_BLINK;
+		case DCC_ASPECT_DARK:
+			return LED_OFF;
 	}
 }
 
@@ -135,7 +184,7 @@ static tick_ms_t prev_ms;
 
 
 
-static void led_status(void)
+static void led_signal(void)
 {
 	tick_ms_t ms_now = tick_ms();
 	tick_ms_t blink_ms = ms_now - prev_ms;
@@ -154,14 +203,6 @@ static void led_status(void)
 		blink = true;
 	}
 
-
-	if (learning) {
-		// Turn LED on
-		LED_PORT |= (1 << LED_BIT);
-	} else {
-		// Turn LED off
-		LED_PORT &= ~(1 << LED_BIT);
-	}
 	
 	enum led_state leds[NR_SIGNALS];
 
@@ -170,23 +211,62 @@ static void led_status(void)
 		enum led_state state = aspect2state(state_aspect[i]);
 		if (blink)
 			state ^= state >> 4;
+		
+#if defined CONFIG_2LED
 		uint8_t pwm1 = cv_read_byte(CV_MANUFACTURER + i * 2 + 0);
 		uint8_t pwm2 = cv_read_byte(CV_MANUFACTURER + i * 2 + 1);
-		state &= (pwm <= pwm1 ? 1 : 0) | (pwm <= pwm2 ? 2 : 0);
+		uint8_t pwm3 = 255;
+#endif
+#if defined CONFIG_3LED
+		uint8_t pwm1 = cv_read_byte(CV_MANUFACTURER + i * 3 + 0);
+		uint8_t pwm2 = cv_read_byte(CV_MANUFACTURER + i * 3 + 1);
+		uint8_t pwm3 = cv_read_byte(CV_MANUFACTURER + i * 3 + 2);
+#endif
+		state &= (pwm <= pwm1 ? 1 : 0) | (pwm <= pwm2 ? 2 : 0) | (pwm <= pwm3 ? 4 : 0);
 		leds[i] = state;
 
-		if (leds[i] & 1) {
+#if defined CONFIG_2LED
+		if (leds[i] & 1 || leds[i] & 4) {
 			*signal_leds[i].port_r |= signal_leds[i].bit_r;
 		} else {
 			*signal_leds[i].port_r &= ~signal_leds[i].bit_r;
 		}
-		if (leds[i] & 2) {
+		if (leds[i] & 2 || leds[i] & 4) {
 			*signal_leds[i].port_g |= signal_leds[i].bit_g;
 		} else {
 			*signal_leds[i].port_g &= ~signal_leds[i].bit_g;
 		}
+#endif
+#if defined CONFIG_3LED
+		// Negative logic for 3 led variant
+		if (leds[i] & 1) {
+			*signal_leds[i].port_r &= ~signal_leds[i].bit_r;
+		} else {
+			*signal_leds[i].port_r |= signal_leds[i].bit_r;
+		}
+		if (leds[i] & 2) {
+			*signal_leds[i].port_g &= ~signal_leds[i].bit_g;
+		} else {
+			*signal_leds[i].port_g |= signal_leds[i].bit_g;
+		}
+		if (leds[i] & 4) {
+			*signal_leds[i].port_y &= ~signal_leds[i].bit_y;
+		} else {
+			*signal_leds[i].port_y |= signal_leds[i].bit_y;
+		}
+#endif
 	}
-	
+}
+
+static void led_status(void)
+{
+	if (learning) {
+		// Turn LED on
+		LED_PORT |= (1 << LED_BIT);
+	} else {
+		// Turn LED off
+		LED_PORT &= ~(1 << LED_BIT);
+	}
 }
 
 
@@ -244,7 +324,7 @@ int main(void)
 		learning_status();
 		dcc_decoder_handle();
 		led_status();
-
+		led_signal();
 	}
 	
 	return 0;
